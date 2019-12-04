@@ -1,0 +1,43 @@
+{
+  "name": "observations-manager",
+  "version": "1.0.0",
+  "description": "Saves and serves sensor observations.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "test": "LOGGER_ENABLED=false jest --runInBand --env=node",
+    "test-debug": "LOGGER_ENABLED=true LOGGER_FORMAT=terminal LOGGER_LEVEL=debug jest --runInBand --env=node",
+    "build": "rm -rf dist && tsc",
+    "build:start": "npm run build && npm start",
+    "build:live": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts",
+    "docker:build": "docker build -t gcr.io/urban-observatory/observations-manager:$npm_package_version .",
+    "docker:push": "docker push gcr.io/urban-observatory/observations-manager:$npm_package_version",
+    "dockerise": "npm run docker:build && npm run docker:push"
+  },
+  "author": "Simon Bell",
+  "license": "ISC",
+  "dependencies": {
+    "@hapi/joi": "^16.1.8",
+    "bluebird": "^3.7.2",
+    "check-types": "^11.0.0",
+    "cls-hooked": "^4.2.2",
+    "dotenv": "^8.2.0",
+    "event-stream": "github:birminghamurbanobservatory/event-stream#semver:^1.0.0",
+    "mongoose": "^5.7.13",
+    "node-logger": "github:birminghamurbanobservatory/node-logger#semver:^1.0.0",
+    "shortid": "^2.2.15"
+  },
+  "devDependencies": {
+    "@types/jest": "^24.0.23",
+    "@types/lodash": "^4.14.149",
+    "@types/node": "^12.12.14",
+    "@typescript-eslint/eslint-plugin": "^2.10.0",
+    "@typescript-eslint/parser": "^2.10.0",
+    "eslint": "^6.7.2",
+    "jest": "^24.9.0",
+    "nodemon": "^2.0.1",
+    "ts-jest": "^24.2.0",
+    "ts-node": "^8.5.4",
+    "typescript": "^3.7.3"
+  }
+}
