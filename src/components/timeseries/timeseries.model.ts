@@ -42,9 +42,10 @@ const schema = new mongoose.Schema({
 //-------------------------------------------------
 // Indexes
 //-------------------------------------------------
-// TODO: Probably a better index than this?
-// Use my index-tester tool to find the best depending on the queries I'll make most often.
-schema.index({inDeployments: 1, hostedByPath: 1, endDate: 1, startDate: 1});
+// TODO: Use my index-tester tool to find the best depending on the queries I'll make most often.
+// N.B. You CAN'T have an index with more than one array, as MongoDB thinks it'll get out of hand, which in fairness it could if you had a lot of elements in each.
+schema.index({inDeployments: 1, endDate: 1, startDate: 1});
+schema.index({hostedByPath: 1, endDate: 1, startDate: 1});
 schema.index({madeBySensor: 1});
 
 //-------------------------------------------------

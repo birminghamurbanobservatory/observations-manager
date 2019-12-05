@@ -5,6 +5,7 @@ import {Promise} from 'bluebird';
 import {logCensorAndRethrow} from '../../events/handle-event-handler-error';
 import * as joi from '@hapi/joi';
 import {BadRequest} from '../../errors/BadRequest';
+import {ObservationClient} from './observation-client.class';
 
 
 export async function subscribeToObservationEvents(): Promise<void> {

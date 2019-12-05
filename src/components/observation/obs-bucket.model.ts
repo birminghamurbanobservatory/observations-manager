@@ -17,8 +17,12 @@ const resultSchema = new mongoose.Schema({
     required: true
   },
   flags: {
-    type: [String]
+    type: [String],
+    default: undefined // this stops the default from being an empty array
   }
+},
+{
+  _id: false // this tells mongo not to bother adding a _id field to each of these result sub-documents, as we'll generate the id from the timeseries and the resultTime on the fly.
 });
 
 const schema = new mongoose.Schema({

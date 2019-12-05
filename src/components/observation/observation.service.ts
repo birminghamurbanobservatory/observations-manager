@@ -95,20 +95,29 @@ export function buildObservation(result: BucketResult, timeseries: TimeseriesApp
 }
 
 
-// TODO: This approach won't work if there's ever a situation when you get more that one observation from a given timeseries at the same resultTime.
+// TODO: This approach won't work if there's ever a situation when you get more that one observation from a given timeseries at the same resultTime. The most likely reason you'd have two observations at the same time is if you apply a procedure that manipulated the data in some way, however this would change the userProcedures array, and therefore the timeseriesId, so this particular example doesn't pose any issues to using this approach.
 export function generateObservationId(timeseriesId: string, resultTime: string | Date): string {
   return `${timeseriesId}-${new Date(resultTime).toISOString()}`;
 }
 
 
-export function observerationClientToApp(observationClient: ObservationClient): ObservationApp {
+export function obsBucketDbToApp(obsBucketDb: any): any {
+  const obsBucketApp = obsBucketDb.toObject();
+  obsBucketApp.id = obsBucketApp._id.toString();
+  delete obsBucketApp._id;
+  delete obsBucketApp.__v;
+  return obsBucketApp;  
+}
+
+
+export function observationClientToApp(observationClient: ObservationClient): ObservationApp {
   const observationApp = cloneDeep(observationClient);
   observationApp.resultTime = new Date(observationApp.resultTime);
   return observationApp;
 }
 
 
-export function observerationAppToClient(observationApp: ObservationApp): ObservationClient {
+export function observationAppToClient(observationApp: ObservationApp): ObservationClient {
   const observationClient = cloneDeep(observationApp);
   return observationClient;
 }
