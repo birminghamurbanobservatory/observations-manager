@@ -22,10 +22,12 @@ const schema = new mongoose.Schema({
     required: true
   },
   inDeployments: {
-    type: [String]
+    type: [String],
+    default: undefined
   },
   hostedByPath: {
-    type: [String] // came to the conclusion that an Array of Ancestors is easier than a materialized path.
+    type: [String], // came to the conclusion that an Array of Ancestors is easier than a materialized path.
+    default: undefined
   },
   observedProperty: {
     type: String
@@ -34,7 +36,8 @@ const schema = new mongoose.Schema({
     type: String // according to SSN an observation is allowed only 1 featureOfInterest, hence this shouldn't ever be an array.
   },
   usedProcedures: {
-    type: [String]
+    type: [String],
+    default: undefined
   }
 });
 
