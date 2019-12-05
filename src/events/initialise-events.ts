@@ -9,22 +9,22 @@ export async function initialiseEvents(settings: {url: string; appName: string; 
 
   if (logIt('error', settings.logLevel)) {
     event.logsEmitter.on('error', (msg): void => {
-      logger.error(msg);
+      logger.error(`(event-stream-log) ${msg}`);
     });
   }
   if (logIt('warn', settings.logLevel)) {
     event.logsEmitter.on('warn', (msg): void => {
-      logger.warn(msg);
+      logger.warn(`(event-stream-log) ${msg}`);
     });
   }
   if (logIt('info', settings.logLevel)) {
     event.logsEmitter.on('info', (msg): void => {
-      logger.info(msg);
+      logger.info(`(event-stream-log) ${msg}`);
     });
   }
   if (logIt('debug', settings.logLevel)) {
     event.logsEmitter.on('debug', (msg): void => {
-      logger.debug(msg);
+      logger.debug(`(event-stream-log) ${msg}`);
     });
   }
 
