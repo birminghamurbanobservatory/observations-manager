@@ -4,6 +4,8 @@ import {UpsertTimeseriesFail} from './errors/UpsertTimeseriesFail';
 import * as check from 'check-types';
 import {TimeseriesApp} from './timeseries-app.class';
 import {sortBy} from 'lodash';
+import {TimeseriesNotFound} from './errors/TimeseriesNotFound';
+import {GetTimeseriesFail} from './errors/GetTimeseriesFail';
 
 
 export async function upsertTimeseries(props: TimeseriesProps, resultTime: Date): Promise<TimeseriesApp> {
@@ -27,6 +29,24 @@ export async function upsertTimeseries(props: TimeseriesProps, resultTime: Date)
   }
 
   return timeseriesDbToApp(upsertedTimeseries);
+
+}
+
+
+export async function getTimeseries(id: string): Promise<TimeseriesApp> {
+
+  let timeseries;
+  try {
+    timeseries = await Timeseries.findById(id).exec();
+  } catch (err) {
+    throw new GetTimeseriesFail(undefined, err.message);
+  }
+
+  if (!timeseries || timeseries.deletedAt) {
+    throw new TimeseriesNotFound(`A timeseries with id '${id}' could not be found`);
+  }
+
+  return timeseriesDbToApp(timeseries);
 
 }
 

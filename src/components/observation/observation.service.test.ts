@@ -1,4 +1,4 @@
-import {extractTimeseriesPropsFromObservation, buildObservation, getDateAsDay, extractResultFromObservation} from './observation.service';
+import {extractTimeseriesPropsFromObservation, buildObservation, getDateAsDay, extractResultFromObservation, generateObservationId, deconstructObservationId} from './observation.service';
 
 
 describe('Testing of extractTimeseriesPropsFromObservation function', () => {
@@ -153,6 +153,40 @@ describe('Testing of buildObservation function', () => {
 
     });
   
+  });
+
+});
+
+
+
+describe('Testing of generateObservationId function', () => {
+
+  test('Should correctly generate observation id (with resultTime as string)', () => {
+    const timeseriesId = '507f1f77bcf86cd799439011';
+    const resultTime = '2019-12-06T14:57:18.838Z';
+    const expected = '507f1f77bcf86cd799439011-2019-12-06T14:57:18.838Z';
+    expect(generateObservationId(timeseriesId, resultTime)).toBe(expected);
+  });
+
+  test('Should correctly generate observation id (with resultTime as date)', () => {
+    const timeseriesId = '507f1f77bcf86cd799439011';
+    const resultTime = new Date('2019-12-06T14:57:18.838Z');
+    const expected = '507f1f77bcf86cd799439011-2019-12-06T14:57:18.838Z';
+    expect(generateObservationId(timeseriesId, resultTime)).toBe(expected);
+  });  
+
+});
+
+
+describe('Testing of deconstructObservationId function', () => {
+
+  test('Should correctly deconstruct', () => {
+    const id = '507f1f77bcf86cd799439011-2019-12-06T14:57:18.838Z';
+    const expected = {
+      timeseriesId: '507f1f77bcf86cd799439011',
+      resultTime: new Date('2019-12-06T14:57:18.838Z')
+    };
+    expect(deconstructObservationId(id)).toEqual(expected);
   });
 
 });

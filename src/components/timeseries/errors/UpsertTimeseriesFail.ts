@@ -1,4 +1,4 @@
-import {DatabaseError} from '../../../errors/DatebaseError';
+import {DatabaseError} from '../../../errors/DatabaseError';
 
 export class UpsertTimeseriesFail extends DatabaseError {
 
