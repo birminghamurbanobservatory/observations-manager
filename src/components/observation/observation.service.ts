@@ -15,6 +15,7 @@ export async function addResult(result: BucketResult, timeseriesId: string): Pro
   const day = getDateAsDay(resultTime);
   const maxResultsPerBucket = 200;
 
+  // TODO: Is there an efficient way of preventing more than one result with the same timestamp? I.e. so the ID we generate from the timeseriesId and resultTime remains unique.
   try {
     await ObsBucket.updateOne({
       timeseries: timeseriesId,
