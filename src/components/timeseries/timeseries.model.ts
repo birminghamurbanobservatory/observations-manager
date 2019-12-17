@@ -9,11 +9,11 @@ import * as mongoose from 'mongoose';
 //-------------------------------------------------
 
 const schema = new mongoose.Schema({
-  startDate: {
+  startDate: { // the time of the first observation belonging to this timeseries
     type: Date,
     required: true
   },
-  endDate: {
+  endDate: { // the time of the most recent observation belonging to this timeseries
     type: Date,
     required: true
   },
