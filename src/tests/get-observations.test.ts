@@ -1,6 +1,6 @@
 import {config} from '../config';
 import * as logger from 'node-logger';
-import {connectDb, disconnectDb} from '../utils/db';
+import {connectDb, disconnectDb} from '../db/mongodb-service';
 import * as MongodbMemoryServer from 'mongodb-memory-server';
 import * as observationController from '../components/observation/observation.controller';
 import * as timeseriesService from '../components/timeseries/timeseries.service';

@@ -8,7 +8,13 @@ import * as joi from '@hapi/joi';
 // Validation Schema
 //-------------------------------------------------
 const schema = joi.object({
-  MONGODB_URI: joi.string()
+  TIMESCALE_HOST: joi.string()
+    .required(),
+  TIMESCALE_USER: joi.string()
+    .required(),
+  TIMESCALE_PASSWORD: joi.string()
+    .required(),
+  TIMESCALE_NAME: joi.string()
     .required()
 }).unknown() // allows for extra fields (i.e that we don't check for) in the object being checked.
   .required();
@@ -30,6 +36,9 @@ if (err) {
 // Create config object
 //-------------------------------------------------
 // Pull out the properties we need to create this particular config object. 
-export const db = {
-  mongoUri: envVars.MONGODB_URI
+export const timescale = {
+  host: envVars.TIMESCALE_HOST,
+  user: envVars.TIMESCALE_USER,
+  password: envVars.TIMESCALE_PASSWORD,
+  name: envVars.TIMESCALE_NAME
 };

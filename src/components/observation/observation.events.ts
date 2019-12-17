@@ -1,5 +1,5 @@
 import * as event from 'event-stream';
-import {createObservation, getObservation, getObservations} from './observation.controller';
+import {createObservation, getObservation} from './observation.controller';
 import * as logger from 'node-logger';
 import {Promise} from 'bluebird'; 
 import {logCensorAndRethrow} from '../../events/handle-event-handler-error';
@@ -130,7 +130,7 @@ async function subscribeToObservationsGetRequests(): Promise<any> {
     try {
       const {error: err} = observationsGetRequestSchema.validate(message);
       if (err) throw new BadRequest(`Invalid ${eventName} request: ${err.message}`);
-      observations = await getObservations(message.where);
+      // observations = await getObservations(message.where);
     } catch (err) {
       logCensorAndRethrow(eventName, err);
     }

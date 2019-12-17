@@ -9,6 +9,35 @@ import {ObservationClient} from './observation-client.class';
 import {GetResultByIdFail} from './errors/GetResultByIdFail';
 import {ObservationNotFound} from './errors/ObservationNotFound';
 import {ObservationAlreadyExists} from './errors/ObservationAlreadyExists';
+import {knex} from '../../db/knex';
+
+
+
+export async function createObservationsTable(): Promise<void> {
+
+  await knex.schema.createTable('observations', (table): void => {
+
+    table.specificType('id', 'BIGSERIAL'); // Don't set this as primary or else create_hypertable won't work.
+    table.string('timeseries', 24).notNullable(); // 24 is the length of a Mongo ObjectID string
+    table.timestamp('result_time', {useTz: true}).notNullable();
+    table.specificType('value_numeric', 'numeric');
+    table.boolean('value_boolean');
+    table.text('value_text');
+    table.jsonb('value_json');
+    table.text('flags'); // use comma delimited string for the flags?
+
+  });
+
+  // Create the hypertable
+  await knex.raw(`SELECT create_hypertable('observations', 'result_time');`);
+  // N.B. if you want a custom primary key, or a unique index, then you must include the result_time.
+  await knex.raw('CREATE UNIQUE INDEX ON observations (timeseries, result_time DESC)');
+  // docs: https://docs.timescale.com/latest/using-timescaledb/schema-management#indexing
+
+  return;
+}
+
+
 
 
 // Guide: https://www.mongodb.com/blog/post/time-series-data-and-mongodb-part-2-schema-design-best-practices

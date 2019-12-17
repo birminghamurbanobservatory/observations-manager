@@ -6,8 +6,10 @@ dotenv.config();
 import * as common from './components/common';
 import * as logger from './components/logger';
 import * as events from './components/events';
-import * as db     from './components/db'; 
+import * as mongo  from './components/mongo'; 
+import * as timescale  from './components/timescale'; 
+
 
 // Export
-export const config = Object.assign({}, common, logger, events, db);
+export const config = Object.assign({}, common, logger, events, mongo, timescale);
 

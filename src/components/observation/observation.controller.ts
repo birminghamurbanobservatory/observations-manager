@@ -57,12 +57,14 @@ const getObservationsWhereSchema = joi.object({
 .min(1)
 .required();
 
+
 // TODO: We'll probably want a user to be able limit just how many many observations they get in one go (e.g. for use with pagination), therefore we should add an options argument where this limit can be set.
-export async function getObservations(where): Promise<ObservationClient[]> {
+// export async function getObservations(where): Promise<ObservationClient[]> {
 
-  // First we need to see if there's any matching timeseries
+//   // First we need to see if there's any matching timeseries
 
-  // Now to get all the observations for these timeseries
+//   // Now to get all the observations for these timeseries
 
 
-}
+
+// }
