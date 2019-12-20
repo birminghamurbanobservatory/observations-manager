@@ -1,6 +1,6 @@
 import {DatabaseError} from '../../../errors/DatabaseError';
 
-export class GetResultByIdFail extends DatabaseError {
+export class GetObservationByIdFail extends DatabaseError {
 
   public privateMessage: string;
 

@@ -2,17 +2,23 @@ import {knex} from './knex';
 import {Promise} from 'bluebird';
 import * as logger from 'node-logger';
 import {createObservationsTable} from '../components/observation/observation.service';
+import {connectToCorrectDb} from './connect-to-correct-db';
 
 
 export async function initialiseDb(): Promise<void> {
+
+  // If the database (e.g. called observations manager) doesn't already exist then you'll want to create it. This is easier said than done as you'll need to reintialise knex with the database as the default 'postgres', then do a knex.raw CREATE DATABASE, then change back to using this new database name.
+  try {
+    await connectToCorrectDb();
+  } catch (err) {
+    throw new Error(`Failed to connect to correct database: ${err.message}.`);
+  }
 
   // Check we can actually reach the database, if not log the error.
   try {
     await getTables();
     logger.debug('Successfully reached database during initialisation');
   } catch (err) {
-    // TODO: If the database (e.g. called observations manager) doesn't already exist then you'll want to create it. This is easier said than done as you'll need to reintialise knex with the database as the default 'postgres', then do a knex.raw CREATE DATABASE, then change back to using this new database name.
-    // Guide: https://stackoverflow.com/questions/27154167/create-drop-database-task-for-gulp-knex
     throw new Error(`Failed reach database whilst initialising it. Reason: ${err.message}`);
   }
   

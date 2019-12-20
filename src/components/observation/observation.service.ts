@@ -1,15 +1,16 @@
-import ObsBucket from './obs-bucket.model';
+import {ObservationCore} from './observation-core.class';
 import {ObservationApp} from './observation-app.class';
 import {pick, cloneDeep, concat} from 'lodash';
 import {TimeseriesApp} from '../timeseries/timeseries-app.class';
 import {TimeseriesProps} from '../timeseries/timeseries-props.class';
-import {BucketResult} from './bucket-result.class';
-import {AddResultFail} from './errors/AddResultFail';
 import {ObservationClient} from './observation-client.class';
-import {GetResultByIdFail} from './errors/GetResultByIdFail';
+import {ObservationRow} from './observation-row.class';
+import {GetObservationByIdFail} from './errors/GetObservationByIdFail';
 import {ObservationNotFound} from './errors/ObservationNotFound';
 import {ObservationAlreadyExists} from './errors/ObservationAlreadyExists';
 import {knex} from '../../db/knex';
+import * as check from 'check-types';
+import {CreateObservationFail} from './errors/CreateObservationFail';
 
 
 
@@ -20,18 +21,19 @@ export async function createObservationsTable(): Promise<void> {
     table.specificType('id', 'BIGSERIAL'); // Don't set this as primary or else create_hypertable won't work.
     table.string('timeseries', 24).notNullable(); // 24 is the length of a Mongo ObjectID string
     table.timestamp('result_time', {useTz: true}).notNullable();
-    table.specificType('value_numeric', 'numeric');
+    table.specificType('value_number', 'numeric');
     table.boolean('value_boolean');
     table.text('value_text');
     table.jsonb('value_json');
-    table.text('flags'); // use comma delimited string for the flags?
+    table.specificType('flags', 'text ARRAY'); // https://www.postgresql.org/docs/9.1/arrays.html
 
   });
 
   // Create the hypertable
   await knex.raw(`SELECT create_hypertable('observations', 'result_time');`);
+  // TODO: By default this will create an index called observations_result_time_idx, should I delete this given that I'll create one below that also uses the timeseries and will be used instead anyway? 
   // N.B. if you want a custom primary key, or a unique index, then you must include the result_time.
-  await knex.raw('CREATE UNIQUE INDEX ON observations (timeseries, result_time DESC)');
+  await knex.raw('CREATE UNIQUE INDEX timeseries_result_time_uniq_idx ON observations (timeseries, result_time DESC)');
   // docs: https://docs.timescale.com/latest/using-timescaledb/schema-management#indexing
 
   return;
@@ -39,108 +41,67 @@ export async function createObservationsTable(): Promise<void> {
 
 
 
+export async function saveObservation(obsCore: ObservationCore, timeseriesId: string): Promise<any> {
 
-// Guide: https://www.mongodb.com/blog/post/time-series-data-and-mongodb-part-2-schema-design-best-practices
-export async function addResult(result: BucketResult, timeseriesId: string): Promise<void> {
+  const observationRow = buildObservationRow(obsCore, timeseriesId);
 
-  // Because the resultTime forms part of the observation ID we generate, we need to ensure a result with this resultTime doesn't already exist for this timeseries. This also prevents us accidently saving the same observation over and over, e.g. because an ingester keep pushing duplicate observations. 
-  // Adding a _id to each result and try to create a unique index would end up in a massive index. 
-  // So the simple solution is just to first see if we can find a result with this resultTime.
-  let resultAlreadyExists;
+  let createdObservation: ObservationRow;
   try {
-    await getResultById(generateObservationId(timeseriesId, result.resultTime)); 
-    resultAlreadyExists = true;
+    const result = await knex('observations')
+    .insert(observationRow)
+    .returning('*');
+    createdObservation = result[0];
   } catch (err) {
-    // In this case we actually want an error to be caught, spefically a ObservationNotFound error.
-    if (err.name === 'ObservationNotFound') {
-      resultAlreadyExists = false;
+    if (err.code === '23505') {
+      throw new ObservationAlreadyExists(`An observation with a resultTime of ${obsCore.resultTime.toISOString()} already exists for the timeseries '${timeseriesId}'.`);
     } else {
-      throw err;
+      throw new CreateObservationFail(undefined, err.message);
     }
   }
 
-  if (resultAlreadyExists) {
-    throw new ObservationAlreadyExists(`An observation with a resultTime of ${result.resultTime.toISOString()} already exists for this timeseries.`);
-  }
+  return observationRowToCore(createdObservation);
 
-  const resultTime = new Date(result.resultTime);
-  const day = getDateAsDay(resultTime);
-  const maxResultsPerBucket = 200;
-
-  try {
-    await ObsBucket.updateOne({
-      timeseries: timeseriesId,
-      day,
-      nResults: {$lt: maxResultsPerBucket},
-    }, 
-    {
-      $push: {results: result},
-      $min: {startDate: resultTime},
-      $max: {endDate: resultTime},
-      $inc: {nResults: 1}
-    },
-    {
-      upsert: true
-    })
-    .exec();
-  } catch (err) {
-    throw new AddResultFail(undefined, err.message); 
-  }
-
-  return;
 }
 
 
-export async function getResultById(id: string): Promise<BucketResult> {
+
+
+export async function getObservationById(id: string): Promise<ObservationCore> {
 
   const {timeseriesId, resultTime} = deconstructObservationId(id);
-  const day = getDateAsDay(resultTime);
 
-  let buckets;
+  let foundObservation;
   try {
-    buckets = await ObsBucket.find({
+    const result = await knex('observations')
+    .select()
+    .where({
       timeseries: timeseriesId,
-      day,
-      startDate: {$lte: resultTime}, 
-      endDate: {$gte: resultTime}
-    }).exec();
+      result_time: resultTime
+    });
+    foundObservation = result[0];
   } catch (err) {
-    throw new GetResultByIdFail(undefined, err.message);
+    throw new GetObservationByIdFail(undefined, err.message);
   }
 
-  if (buckets.length === 0) {
+  if (!foundObservation) {
     throw new ObservationNotFound(`Failed to find an observation with ID '${id}'`);
   }
 
-  // There might be a few buckets returned (e.g. if data originally came in out of order and the sensor has a high sample rate), and thus we need to get all the results together before finding the one we want.
-  const allResults = buckets.reduce((resultsSoFar, currentBucket) => {
-    return concat(resultsSoFar, currentBucket.results);
-  }, []);
-  const result = allResults.find((result) => result.resultTime.toISOString() === resultTime.toISOString());
-
-  if (!result) {
-    throw new ObservationNotFound(`Failed to find an observation with ID '${id}'`);
-  }
-
-  return result;
+  return observationRowToCore(foundObservation);
 
 }
 
 
-export function getDateAsDay(date: Date): Date {
-  return new Date(date.toISOString().slice(0, 10));
-}
 
-
-export function extractResultFromObservation(observation: ObservationApp): BucketResult {
-  const result: BucketResult = {
+export function extractCoreFromObservation(observation: ObservationApp): ObservationCore {
+  const obsCore: ObservationCore = {
     value: observation.hasResult.value,
     resultTime: new Date(observation.resultTime)
   };
   if (observation.hasResult.flags) {
-    result.flags = observation.hasResult.flags;
+    obsCore.flags = observation.hasResult.flags;
   }
-  return result;
+  return obsCore;
 }
 
 
@@ -159,7 +120,7 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
 }
 
 
-export function buildObservation(result: BucketResult, timeseries: TimeseriesApp): ObservationApp {
+export function buildObservation(obsCore: ObservationCore, timeseries: TimeseriesApp): ObservationApp {
 
   const observation: ObservationApp = pick(timeseries, [
     'madeBySensor',
@@ -170,13 +131,13 @@ export function buildObservation(result: BucketResult, timeseries: TimeseriesApp
     'usedProcedures'
   ]);
 
-  observation.id = generateObservationId(timeseries.id, result.resultTime);
-  observation.resultTime = result.resultTime;
+  observation.id = generateObservationId(timeseries.id, obsCore.resultTime);
+  observation.resultTime = obsCore.resultTime;
   observation.hasResult = {
-    value: result.value,
+    value: obsCore.value,
   };
-  if (result.flags) {
-    observation.hasResult.flags = result.flags;
+  if (obsCore.flags) {
+    observation.hasResult.flags = obsCore.flags;
   }
 
   return observation;
@@ -196,12 +157,62 @@ export function deconstructObservationId(id: string): {timeseriesId: string; res
   }; 
 }
 
-export function obsBucketDbToApp(obsBucketDb: any): any {
-  const obsBucketApp = obsBucketDb.toObject();
-  obsBucketApp.id = obsBucketApp._id.toString();
-  delete obsBucketApp._id;
-  delete obsBucketApp.__v;
-  return obsBucketApp;  
+
+
+export function observationRowToCore(observationRow: ObservationRow): ObservationCore {
+
+  const obsCore: ObservationCore = {
+    timeseries: observationRow.timeseries,
+    resultTime: new Date(observationRow.result_time)
+  };
+  if (observationRow.flags) {
+    obsCore.flags = observationRow.flags;
+  }
+
+  // Find the column that's not null
+  if (observationRow.value_number !== null) {
+    obsCore.value = observationRow.value_number;
+  } else if (observationRow.value_boolean !== null) {
+    obsCore.value = observationRow.value_boolean;
+  } else if (observationRow.value_text !== null) {
+    obsCore.value = observationRow.value_text;
+  } else if (observationRow.value_json !== null) {
+    obsCore.value = observationRow.value_json;
+  }
+
+  return obsCore;
+
+}
+
+
+export function buildObservationRow(obsCore: ObservationCore, timeseriesId: string): ObservationRow {
+  
+  const observationRow: ObservationRow = {
+    result_time: new Date(obsCore.resultTime).toISOString(),
+    timeseries: timeseriesId
+  };
+  if (obsCore.flags && obsCore.flags.length > 0) {
+    observationRow.flags = obsCore.flags;
+  }
+
+  if (check.number(obsCore.value)) {
+    observationRow.value_number = obsCore.value;
+
+  } else if (check.boolean(obsCore.value)) {
+    observationRow.value_boolean = obsCore.value;
+
+  } else if (check.string(obsCore.value)) {
+    observationRow.value_text = obsCore.value;
+
+  } else if (check.object(obsCore.value) || check.array(obsCore.value)) {
+    observationRow.value_json = obsCore.value;
+
+  } else {
+    throw new Error(`Unexpected observation value: ${obsCore.value}`);
+  }
+
+  return observationRow;
+
 }
 
 
