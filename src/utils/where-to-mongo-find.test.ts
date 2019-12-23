@@ -13,6 +13,9 @@ describe('Conversion of where object to MongoDB/Mongoose find object', () => {
   test('Converts a substantial where object', () => {
     const where = {
       inDeployment: 'deployment-1',
+      madeBySensor: {
+        in: ['sensor-1', 'sensor-2']
+      },
       isHostedBy: {
         exists: false
       },
@@ -23,7 +26,8 @@ describe('Conversion of where object to MongoDB/Mongoose find object', () => {
     const expected = {
       inDeployment: 'deployment-1',
       isHostedBy: {$exists: false},
-      createdAt: {$gte: '2019-11-29'}
+      createdAt: {$gte: '2019-11-29'},
+      madeBySensor: {$in: ['sensor-1', 'sensor-2']}
     };
     expect(whereToMongoFind(where)).toEqual(expected);
   });

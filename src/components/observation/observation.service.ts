@@ -93,6 +93,18 @@ export async function getObservationById(id: string): Promise<ObservationCore> {
 
 
 
+export async function getObservations(where: {timeseriesIds: string[]; resultTime?: any; flags?: any}): Promise<ObservationCore[]> {
+
+  // TODO: resultTime can be an object with lt, gt, gte, lte properties.
+  // TODO: need to be able to specify that flags should not exist ($exists: false), as well as being able to filter by specific flags.
+
+  // TODO
+  return [];
+
+}
+
+
+
 export function extractCoreFromObservation(observation: ObservationApp): ObservationCore {
   const obsCore: ObservationCore = {
     value: observation.hasResult.value,

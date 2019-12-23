@@ -6,6 +6,7 @@ import {TimeseriesApp} from './timeseries-app.class';
 import {sortBy} from 'lodash';
 import {TimeseriesNotFound} from './errors/TimeseriesNotFound';
 import {GetTimeseriesFail} from './errors/GetTimeseriesFail';
+import {whereToMongoFind} from '../../utils/where-to-mongo-find';
 
 
 export async function upsertTimeseries(props: TimeseriesProps, resultTime: Date): Promise<TimeseriesApp> {
@@ -47,6 +48,22 @@ export async function getTimeseries(id: string): Promise<TimeseriesApp> {
   }
 
   return timeseriesDbToApp(timeseries);
+
+}
+
+
+export async function findTimeseries(where: any): Promise<TimeseriesApp[]> {
+
+  const findWhere =  whereToMongoFind(where);
+
+  let timeseries;
+  try {
+    timeseries = await Timeseries.find(findWhere).exec();
+  } catch (err) {
+    throw new GetTimeseriesFail(undefined, err.message);
+  }
+
+  return timeseries.map(timeseriesDbToApp);  
 
 }
 

@@ -13,7 +13,8 @@ export function whereToMongoFind(where: any): any {
     gte: '$gte',
     gt: '$gt',
     lte: '$lte',
-    lt: '$lt'
+    lt: '$lt',
+    in: '$in'
   };
 
   Object.keys(where).forEach((propKey) => {
