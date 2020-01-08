@@ -11,6 +11,7 @@ import {ObservationAlreadyExists} from './errors/ObservationAlreadyExists';
 import {knex} from '../../db/knex';
 import * as check from 'check-types';
 import {CreateObservationFail} from './errors/CreateObservationFail';
+import {GetObservationsFail} from './errors/GetObservationsFail';
 
 
 
@@ -93,13 +94,33 @@ export async function getObservationById(id: string): Promise<ObservationCore> {
 
 
 
-export async function getObservations(where: {timeseriesIds: string[]; resultTime?: any; flags?: any}): Promise<ObservationCore[]> {
+export async function getObservations(where: {timeseriesIds?: string[]; resultTime?: any; flags?: any}, options: {limit?: number, offset?: number}): Promise<ObservationCore[]> {
 
+  // TODO: Need to make sure there's a max limit applied on the numbers of observations than can be retrieved at once.
+  // TODO: Need to actually filter by timeseriesIds.
+  // TODO: It is possible no timeseriesIds have been provided, in which case just get all the most recent observations, as many as the limit allows. E.g. a request could have come from another microservice that just wants the last n observations from wherever.
   // TODO: resultTime can be an object with lt, gt, gte, lte properties.
   // TODO: need to be able to specify that flags should not exist ($exists: false), as well as being able to filter by specific flags.
 
-  // TODO
-  return [];
+
+  let foundObservations;
+  try {
+    const result = await knex('observations')
+    .select()
+    .where((builder) => {
+      if (where.timeseriesIds) {
+        builder.whereIn('timeseries', where.timeseriesIds);
+      }
+    })
+    .limit(options.limit || 100000)
+    .offset(options.offset || 0);
+    foundObservations = result;
+  } catch (err) {
+    throw new GetObservationsFail(undefined, err.message);
+  }
+
+
+  return foundObservations.map(observationRowToCore);
 
 }
 
@@ -156,6 +177,23 @@ export function buildObservation(obsCore: ObservationCore, timeseries: Timeserie
 }
 
 
+// TODO: Might be worth trying to optimise this at some point
+export function buildObservations(obsCores: ObservationCore[], timeseries: TimeseriesApp[]): ObservationApp[] {
+
+  // Makes sense to loop through the obs rather than the timeseries given that it may be worth maintaining the order of the observations
+  const observations = obsCores.map((obsCore) => {
+    const matchingTimeseries = timeseries.find((ts) => ts.id === obsCore.timeseries);
+    if (!matchingTimeseries) {
+      throw new Error('No matching timeseries found to build obs from');
+    }
+    const observation = buildObservation(obsCore, matchingTimeseries);
+    return observation;
+  });
+
+  return observations;
+}
+
+
 // TODO: This approach won't work if there's ever a situation when you get more that one observation from a given timeseries at the same resultTime. The most likely reason you'd have two observations at the same time is if you apply a procedure that manipulated the data in some way, however this would change the userProcedures array, and therefore the timeseriesId, so this particular example doesn't pose any issues to using this approach.
 export function generateObservationId(timeseriesId: string, resultTime: string | Date): string {
   return `${timeseriesId}-${new Date(resultTime).toISOString()}`;
@@ -183,7 +221,8 @@ export function observationRowToCore(observationRow: ObservationRow): Observatio
 
   // Find the column that's not null
   if (observationRow.value_number !== null) {
-    obsCore.value = observationRow.value_number;
+    // For some reason the values from the value_number column are coming back as strings, so lets convert them back to a number here.
+    obsCore.value = Number(observationRow.value_number);
   } else if (observationRow.value_boolean !== null) {
     obsCore.value = observationRow.value_boolean;
   } else if (observationRow.value_text !== null) {

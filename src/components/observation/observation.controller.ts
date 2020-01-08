@@ -1,12 +1,15 @@
 import {ObservationClient} from './observation-client.class';
 import {extractTimeseriesPropsFromObservation, extractCoreFromObservation, buildObservation, observationClientToApp, observationAppToClient} from './observation.service';
 import * as observationService from '../observation/observation.service';
-import {upsertTimeseries, getTimeseries, findTimeseries} from '../timeseries/timeseries.service';
+import {upsertTimeseries, getTimeseries, findTimeseries, findTimeseriesUsingIds} from '../timeseries/timeseries.service';
 import * as logger from 'node-logger';
 import * as joi from '@hapi/joi';
 import {InvalidObservation} from './errors/InvalidObservation';
 import {BadRequest} from '../../errors/BadRequest';
+import {config} from '../../config';
+import {uniq} from 'lodash';
 
+const maxObsPerRequest = config.obs.maxPerRequest;
 
 
 const createObservationSchema = joi.object({
@@ -72,7 +75,9 @@ const getObservationsWhereSchema = joi.object({
     lte: joi.string().isoDate(),
     gt: joi.string().isoDate(),
     gte: joi.string().isoDate()
-  }),
+  })
+  .without('lt', 'lte')
+  .without('gt', 'gte'),
   madeBySensor: joi.string(),
   inDeployment: joi.alternatives().try(
     joi.string(),
@@ -84,39 +89,65 @@ const getObservationsWhereSchema = joi.object({
   observedProperty: joi.string(),
   hasFeatureOfInterest: joi.string(),
   usedProcedure: joi.string() // need to allow more than one to be specified?
+  // TODO: What about filtering by flags, or filtering out flagged observations, just watch properties like this aren't used to filter the timeseries documents, just the observation rows.
 })
-.min(1)
 .required();
+// Decided not to have a minimum number of keys here, i.e. so that superusers or other microservices can get observations with limitations. The limitation will come from a pagination approach, whereby only so many observations can be returned per request.
 
 const getObservationsOptionsSchema = joi.object({
-  limit: joi.number().integer().positive().max(1000),
-  offset: joi.number().integer().positive()
+  limit: joi.number()
+    .integer()
+    .positive()
+    .max(maxObsPerRequest)
+    .default(maxObsPerRequest),
+  offset: joi.number()
+    .integer()
+    .positive()
+    .default(0)
 })
 .required();
 
-
-// TODO: We'll probably want a user to be able limit just how many many observations they get in one go (e.g. for use with pagination), therefore we should add an options argument where this limit can be set.
 export async function getObservations(where, options): Promise<ObservationClient[]> {
 
   const {error: whereErr, value: whereValidated} = getObservationsWhereSchema.validate(where);
   if (whereErr) throw new BadRequest(whereErr.message);
-  const {error: optionsErr, value: optionsValidated} = getObservationsWhereSchema.validate(where);
+  const {error: optionsErr, value: optionsValidated} = getObservationsWhereSchema.validate(options);
   if (whereErr) throw new BadRequest(optionsErr.message);
 
+  // If no "where" parameters have been provided that allow us to filter down the timeseriesId we need to search by, then best to get observations first, and then get their timeseries after so we can give the observations some extra metadata.
+  const whereKeys = Object.keys(whereValidated);
+  const getObsBeforeTimeseries = whereKeys.length === 0 || (whereKeys.length === 1 && whereKeys[0] === 'resultTime');
 
-  // First we need to see if there's any matching timeseries
-  // TODO: allow for filtering of the timeseries by the resultTime, e.g. converting from the resultTime where parameters to startDate and endDate filters.
-  const timeseries = await findTimeseries(whereValidated);
-  // TODO: Is there any more filtering of the timeseries we can do? e.g. if we only want the last observation for every platform then we may not need every timeseries.
-  const timeseriesIds = timeseries.map((ts): string => ts.id);
+  let timeseries;
+  let timeseriesIds;
+
+  if (!getObsBeforeTimeseries) {
+    // Find any matching timeseries
+    timeseries = await findTimeseries(whereValidated);
+    timeseriesIds = timeseries.map((ts): string => ts.id);
+  }
 
   // Now to get all the observations for these timeseries
   // TODO: do I need this function to also tell us whether if hit the maximum obs limit?
-  const observations = await observationService.getObservations({
+  const obsCores = await observationService.getObservations({
     timeseriesIds
     // TODO: add resultTime and flags params.
+  }, {
+    limit: optionsValidated.limit,
+    offset: optionsValidated.offset
   });
 
-  return observations;
+  // If we need to get timeseries info AFTER having got the obs
+  if (obsCores.length > 0 && !timeseries) {
+    // Get the timeseriesIds from the obs
+    const timeseriesIdsFromObs = uniq(obsCores.map((obsCore) => obsCore.timeseries));
+    timeseries = await findTimeseriesUsingIds(timeseriesIdsFromObs);
+  }
+
+  const observations = observationService.buildObservations(obsCores, timeseries);
+
+  const observationsForClient = observations.map(observationService.observationAppToClient);
+
+  return observationsForClient;
 
 }
