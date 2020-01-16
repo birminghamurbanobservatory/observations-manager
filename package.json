@@ -19,15 +19,16 @@
   "dependencies": {
     "@hapi/joi": "^16.1.8",
     "bluebird": "^3.7.2",
+    "camelcase-keys": "^6.1.1",
     "check-types": "^11.0.0",
     "cls-hooked": "^4.2.2",
     "dotenv": "^8.2.0",
     "event-stream": "github:birminghamurbanobservatory/event-stream#semver:^1.0.0",
     "knex": "^0.20.4",
-    "mongoose": "^5.7.13",
     "node-logger": "github:birminghamurbanobservatory/node-logger#semver:^1.0.0",
     "pg": "^7.15.0",
-    "shortid": "^2.2.15"
+    "shortid": "^2.2.15",
+    "snakecase-keys": "^3.1.1"
   },
   "devDependencies": {
     "@types/jest": "^24.0.23",

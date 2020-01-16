@@ -1,7 +1,7 @@
 export class TimeseriesApp {
   public id?: string;
-  public startDate?: Date;
-  public endDate?: Date;
+  public firstObs?: Date;
+  public lastObs?: Date;
   public madeBySensor?: string;
   public inDeployments?: string[];
   public hostedByPath?: string[];

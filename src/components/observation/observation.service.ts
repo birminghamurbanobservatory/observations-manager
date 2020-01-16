@@ -14,7 +14,6 @@ import {CreateObservationFail} from './errors/CreateObservationFail';
 import {GetObservationsFail} from './errors/GetObservationsFail';
 
 
-
 export async function createObservationsTable(): Promise<void> {
 
   await knex.schema.createTable('observations', (table): void => {
@@ -27,6 +26,7 @@ export async function createObservationsTable(): Promise<void> {
     table.text('value_text');
     table.jsonb('value_json');
     table.specificType('flags', 'text ARRAY'); // https://www.postgresql.org/docs/9.1/arrays.html
+    // TODO: Add a location column that points to the locations table
 
   });
 
@@ -54,7 +54,7 @@ export async function saveObservation(obsCore: ObservationCore, timeseriesId: st
     createdObservation = result[0];
   } catch (err) {
     if (err.code === '23505') {
-      throw new ObservationAlreadyExists(`An observation with a resultTime of ${obsCore.resultTime.toISOString()} already exists for the timeseries '${timeseriesId}'.`);
+      throw new ObservationAlreadyExists(`An observation with a resultTime of ${obsCore.resultTime.toISOString()} already exists for the timeseries with id: '${timeseriesId}'.`);
     } else {
       throw new CreateObservationFail(undefined, err.message);
     }

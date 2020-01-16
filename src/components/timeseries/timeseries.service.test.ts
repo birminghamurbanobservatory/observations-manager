@@ -1,7 +1,7 @@
-import {convertPropsToFindQuery} from './timeseries.service';
+import {convertPropsToExactWhere} from './timeseries.service';
 
 
-describe('Testing of convertPropsToFindQuery function', () => {
+describe('Testing of convertPropsToExactWhere function', () => {
 
   test('Converts a full set of props', () => {
     
@@ -23,7 +23,7 @@ describe('Testing of convertPropsToFindQuery function', () => {
       usedProcedures: ['point-sample']      
     };
 
-    expect(convertPropsToFindQuery(props)).toEqual(expected);
+    expect(convertPropsToExactWhere(props)).toEqual(expected);
 
   });
 
@@ -45,7 +45,7 @@ describe('Testing of convertPropsToFindQuery function', () => {
       usedProcedures: {$exists: false}     
     };
 
-    expect(convertPropsToFindQuery(props)).toEqual(expected);
+    expect(convertPropsToExactWhere(props)).toEqual(expected);
 
   });
 
@@ -71,7 +71,10 @@ describe('Testing of convertPropsToFindQuery function', () => {
       usedProcedures: ['point-sample', 'averaged']  // don't want this re-ordered, as the order means something
     };
 
-    expect(convertPropsToFindQuery(props)).toEqual(expected);
+    expect(convertPropsToExactWhere(props)).toEqual(expected);
+
+    // We also want to check it doesn't mutate the input array
+    expect(props.inDeployments).toEqual(['deployment-b', 'deployment-c', 'deployment-a']);
 
   });
 

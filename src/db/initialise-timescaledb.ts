@@ -2,6 +2,7 @@ import {knex} from './knex';
 import {Promise} from 'bluebird';
 import * as logger from 'node-logger';
 import {createObservationsTable} from '../components/observation/observation.service';
+import {createTimeseriesTable} from '../components/timeseries/timeseries.service';
 import {connectToCorrectDb} from './connect-to-correct-db';
 
 
@@ -27,9 +28,25 @@ export async function initialiseDb(): Promise<void> {
   if (!timescaledbExtensionInstalled) {
     throw new Error('Timescaledb extension is not installed');
   }
+
+  const postgisExtensionInstalled = await checkForExtension('postgis');
+  if (!postgisExtensionInstalled) {
+    await knex.raw('CREATE EXTENSION postgis');
+    logger.info('postgis entension installed, because it was not yet installed.');
+  }
+  
+  const ltreeExtensionInstalled = await checkForExtension('ltree');
+  if (!ltreeExtensionInstalled) {
+    await knex.raw('CREATE EXTENSION ltree');
+    logger.info('ltree entension installed, because it was not yet installed.');
+  }  
   
   // The order here is important, as some tables depend on others.
   const tables = [
+    {
+      name: 'timeseries',
+      itsCreateFunction: createTimeseriesTable
+    },
     {
       name: 'observations',
       itsCreateFunction: createObservationsTable
