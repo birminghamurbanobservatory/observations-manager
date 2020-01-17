@@ -18,6 +18,7 @@
   "license": "ISC",
   "dependencies": {
     "@hapi/joi": "^16.1.8",
+    "@mapbox/geojsonhint": "^3.0.0",
     "bluebird": "^3.7.2",
     "camelcase-keys": "^6.1.1",
     "check-types": "^11.0.0",
@@ -28,7 +29,8 @@
     "node-logger": "github:birminghamurbanobservatory/node-logger#semver:^1.0.0",
     "pg": "^7.15.0",
     "shortid": "^2.2.15",
-    "snakecase-keys": "^3.1.1"
+    "snakecase-keys": "^3.1.1",
+    "uuid": "^3.4.0"
   },
   "devDependencies": {
     "@types/jest": "^24.0.23",

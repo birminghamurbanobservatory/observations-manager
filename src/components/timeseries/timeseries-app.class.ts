@@ -1,5 +1,5 @@
 export class TimeseriesApp {
-  public id?: string;
+  public id?: number;
   public firstObs?: Date;
   public lastObs?: Date;
   public madeBySensor?: string;

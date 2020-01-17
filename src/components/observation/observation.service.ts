@@ -4,7 +4,7 @@ import {pick, cloneDeep, concat} from 'lodash';
 import {TimeseriesApp} from '../timeseries/timeseries-app.class';
 import {TimeseriesProps} from '../timeseries/timeseries-props.class';
 import {ObservationClient} from './observation-client.class';
-import {ObservationRow} from './observation-row.class';
+import {ObservationDb} from './observation-db.class';
 import {GetObservationByIdFail} from './errors/GetObservationByIdFail';
 import {ObservationNotFound} from './errors/ObservationNotFound';
 import {ObservationAlreadyExists} from './errors/ObservationAlreadyExists';
@@ -21,12 +21,17 @@ export async function createObservationsTable(): Promise<void> {
     table.specificType('id', 'BIGSERIAL'); // Don't set this as primary or else create_hypertable won't work.
     table.string('timeseries', 24).notNullable(); // 24 is the length of a Mongo ObjectID string
     table.timestamp('result_time', {useTz: true}).notNullable();
+    table.bigInteger('location');
     table.specificType('value_number', 'numeric');
     table.boolean('value_boolean');
     table.text('value_text');
     table.jsonb('value_json');
     table.specificType('flags', 'text ARRAY'); // https://www.postgresql.org/docs/9.1/arrays.html
-    // TODO: Add a location column that points to the locations table
+
+    table.foreign('location')
+    .references('id')
+    .inTable('locations')
+    .withKeyName('location_id');
 
   });
 
@@ -34,33 +39,34 @@ export async function createObservationsTable(): Promise<void> {
   await knex.raw(`SELECT create_hypertable('observations', 'result_time');`);
   // TODO: By default this will create an index called observations_result_time_idx, should I delete this given that I'll create one below that also uses the timeseries and will be used instead anyway? 
   // N.B. if you want a custom primary key, or a unique index, then you must include the result_time.
-  await knex.raw('CREATE UNIQUE INDEX timeseries_result_time_uniq_idx ON observations (timeseries, result_time DESC)');
   // docs: https://docs.timescale.com/latest/using-timescaledb/schema-management#indexing
+  await knex.raw('CREATE UNIQUE INDEX timeseries_spatiotemporal_uniq_idx ON observations (timeseries, result_time, location DESC)');
+  // N.B. we need the COALESCE for instances when no location is provided, i.e. the column stores a NULL value. Without it two identical locationless observations wouldn't trigger a duplicate error, because NULL counts as distinct each time.
 
   return;
 }
 
 
 
-export async function saveObservation(obsCore: ObservationCore, timeseriesId: string): Promise<any> {
+export async function saveObservation(obsCore: ObservationCore, timeseriesId: number): Promise<any> {
 
-  const observationRow = buildObservationRow(obsCore, timeseriesId);
+  const observationDb = buildObservationDb(obsCore, timeseriesId);
 
-  let createdObservation: ObservationRow;
+  let createdObservation: ObservationDb;
   try {
     const result = await knex('observations')
-    .insert(observationRow)
+    .insert(observationDb)
     .returning('*');
     createdObservation = result[0];
   } catch (err) {
     if (err.code === '23505') {
-      throw new ObservationAlreadyExists(`An observation with a resultTime of ${obsCore.resultTime.toISOString()} already exists for the timeseries with id: '${timeseriesId}'.`);
+      throw new ObservationAlreadyExists(`An observation with a resultTime of ${obsCore.resultTime.toISOString()} and location id '${obsCore.location}' already exists for the timeseries with id: '${timeseriesId}'.`);
     } else {
       throw new CreateObservationFail(undefined, err.message);
     }
   }
 
-  return observationRowToCore(createdObservation);
+  return observationDbToCore(createdObservation);
 
 }
 
@@ -88,7 +94,7 @@ export async function getObservationById(id: string): Promise<ObservationCore> {
     throw new ObservationNotFound(`Failed to find an observation with ID '${id}'`);
   }
 
-  return observationRowToCore(foundObservation);
+  return observationDbToCore(foundObservation);
 
 }
 
@@ -120,7 +126,7 @@ export async function getObservations(where: {timeseriesIds?: string[]; resultTi
   }
 
 
-  return foundObservations.map(observationRowToCore);
+  return foundObservations.map(observationDbToCore);
 
 }
 
@@ -194,41 +200,63 @@ export function buildObservations(obsCores: ObservationCore[], timeseries: Times
 }
 
 
-// TODO: This approach won't work if there's ever a situation when you get more that one observation from a given timeseries at the same resultTime. The most likely reason you'd have two observations at the same time is if you apply a procedure that manipulated the data in some way, however this would change the userProcedures array, and therefore the timeseriesId, so this particular example doesn't pose any issues to using this approach.
-export function generateObservationId(timeseriesId: string, resultTime: string | Date): string {
-  return `${timeseriesId}-${new Date(resultTime).toISOString()}`;
+// N.B: This approach won't work if there's ever a situation when you get more that one observation from a given timeseries at the same resultTime and location. The most likely reason you'd have two observations at the same time is if you apply a procedure that manipulated the data in some way, however this would change the userProcedures array, and therefore the timeseriesId, so this particular example doesn't pose any issues to using this approach.
+// N.B. The location id is included, because perhaps you have a sensor that can make simulataneous observations as several locations, if you don't incorporate the location then it will only allow you to save a single observation as they'll all have the same resultTime.
+// N.B. we default to the locationId to 0 if no locationId is given, e.g. the obs didn't have a specific location.
+export function generateObservationId(timeseriesId: number, resultTime: string | Date, locationId = 0): string {
+  return `${timeseriesId}-${locationId}-${new Date(resultTime).toISOString()}`;
 }
 
-export function deconstructObservationId(id: string): {timeseriesId: string; resultTime: Date} {
-  const splitAt = id.indexOf('-');
-  return {
-    timeseriesId: id.slice(0, splitAt),
-    resultTime: new Date(id.slice(splitAt + 1, id.length))
+
+
+export function deconstructObservationId(id: string): {timeseriesId: number; resultTime: Date; locationId?: number} {
+  const firstSplit = nthIndex(id, '-', 1);
+  const secondSplit = nthIndex(id, '-', 2);
+  const components: any = {
+    timeseriesId: Number(id.slice(0, firstSplit)),
+    resultTime: new Date(id.slice(secondSplit + 1, id.length))
   }; 
+  const locationId = Number(id.slice(firstSplit + 1, secondSplit));
+  if (locationId !== 0) {
+    components.locationId = locationId;
+  }
+  return components;
+}
+
+
+function nthIndex(str: string, subString: string, nthOccurrence: number): number {
+  const L = str.length;
+  let i = -1;
+  let n = nthOccurrence;
+  while (n-- && i++ < L) {
+    i = str.indexOf(subString, i);
+    if (i < 0) break;
+  }
+  return i;
 }
 
 
 
-export function observationRowToCore(observationRow: ObservationRow): ObservationCore {
+export function observationDbToCore(observationDb: ObservationDb): ObservationCore {
 
   const obsCore: ObservationCore = {
-    timeseries: observationRow.timeseries,
-    resultTime: new Date(observationRow.result_time)
+    timeseries: observationDb.timeseries,
+    resultTime: new Date(observationDb.result_time)
   };
-  if (observationRow.flags) {
-    obsCore.flags = observationRow.flags;
+  if (observationDb.flags) {
+    obsCore.flags = observationDb.flags;
   }
 
   // Find the column that's not null
-  if (observationRow.value_number !== null) {
+  if (observationDb.value_number !== null) {
     // For some reason the values from the value_number column are coming back as strings, so lets convert them back to a number here.
-    obsCore.value = Number(observationRow.value_number);
-  } else if (observationRow.value_boolean !== null) {
-    obsCore.value = observationRow.value_boolean;
-  } else if (observationRow.value_text !== null) {
-    obsCore.value = observationRow.value_text;
-  } else if (observationRow.value_json !== null) {
-    obsCore.value = observationRow.value_json;
+    obsCore.value = Number(observationDb.value_number);
+  } else if (observationDb.value_boolean !== null) {
+    obsCore.value = observationDb.value_boolean;
+  } else if (observationDb.value_text !== null) {
+    obsCore.value = observationDb.value_text;
+  } else if (observationDb.value_json !== null) {
+    obsCore.value = observationDb.value_json;
   }
 
   return obsCore;
@@ -236,33 +264,36 @@ export function observationRowToCore(observationRow: ObservationRow): Observatio
 }
 
 
-export function buildObservationRow(obsCore: ObservationCore, timeseriesId: string): ObservationRow {
+export function buildObservationDb(obsCore: ObservationCore, timeseriesId: number): ObservationDb {
   
-  const observationRow: ObservationRow = {
+  const observationDb: ObservationDb = {
     result_time: new Date(obsCore.resultTime).toISOString(),
     timeseries: timeseriesId
   };
   if (obsCore.flags && obsCore.flags.length > 0) {
-    observationRow.flags = obsCore.flags;
+    observationDb.flags = obsCore.flags;
+  }
+  if (obsCore.location) {
+    observationDb.location = obsCore.location;
   }
 
   if (check.number(obsCore.value)) {
-    observationRow.value_number = obsCore.value;
+    observationDb.value_number = obsCore.value;
 
   } else if (check.boolean(obsCore.value)) {
-    observationRow.value_boolean = obsCore.value;
+    observationDb.value_boolean = obsCore.value;
 
   } else if (check.string(obsCore.value)) {
-    observationRow.value_text = obsCore.value;
+    observationDb.value_text = obsCore.value;
 
   } else if (check.object(obsCore.value) || check.array(obsCore.value)) {
-    observationRow.value_json = obsCore.value;
+    observationDb.value_json = obsCore.value;
 
   } else {
     throw new Error(`Unexpected observation value: ${obsCore.value}`);
   }
 
-  return observationRow;
+  return observationDb;
 
 }
 

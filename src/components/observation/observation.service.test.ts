@@ -1,4 +1,4 @@
-import {extractTimeseriesPropsFromObservation, buildObservation, getDateAsDay, extractResultFromObservation, generateObservationId, deconstructObservationId} from './observation.service';
+import {extractTimeseriesPropsFromObservation, buildObservation, generateObservationId, deconstructObservationId} from './observation.service';
 
 
 describe('Testing of extractTimeseriesPropsFromObservation function', () => {
@@ -64,7 +64,7 @@ describe('Testing of buildObservation function', () => {
     };
 
     const timeseries = {
-      id: '5de7ec4ce9d92c08dbc5db9d',
+      id: 5432,
       startDate: new Date('2019-12-04T13:22:23.133Z'),
       endDate: new Date('2019-12-04T17:26:23.205Z'),
       madeBySensor: 'sensor-123',
@@ -76,7 +76,7 @@ describe('Testing of buildObservation function', () => {
     };
 
     const expected = {
-      id: '5de7ec4ce9d92c08dbc5db9d-2019-12-04T17:26:23.205Z',
+      id: '5432-0-2019-12-04T17:26:23.205Z',
       madeBySensor: 'sensor-123',
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
@@ -94,96 +94,52 @@ describe('Testing of buildObservation function', () => {
 
   });
 
-
-  describe('Testing getDateAsDay function', () => {
-  
-    test('', () => {
-      const date = new Date('2019-12-04T17:26:23.205Z');
-      const expected = new Date('2019-12-04');
-      expect(getDateAsDay(date)).toEqual(expected);
-    });
-  
-  });
-
-
-  describe('Testing extractResultFromObservation function', () => {
-  
-    test('Should correctly extra the result from an observation (without any flags)', () => {
-
-      const observation = {
-        madeBySensor: 'sensor-123',
-        hasResult: {
-          value: 12.2
-        },
-        resultTime: new Date('2019-12-04T17:26:23.205Z'),
-        hasFeatureOfInterest: 'weather',
-        observedProperty: 'air-temp',
-      };
-
-      const expectedResult = {
-        value: 12.2,
-        resultTime: new Date('2019-12-04T17:26:23.205Z')
-      };
-
-      expect(extractResultFromObservation(observation)).toEqual(expectedResult);
-
-    });
-
-
-    test('Should correctly extra the result from an observation (with flags)', () => {
-
-      const observation = {
-        madeBySensor: 'sensor-123',
-        hasResult: {
-          value: 12.2,
-          flags: ['persistence']
-        },
-        resultTime: new Date('2019-12-04T17:26:23.205Z'),
-        hasFeatureOfInterest: 'weather',
-        observedProperty: 'air-temp',
-      };
-
-      const expectedResult = {
-        value: 12.2,
-        resultTime: new Date('2019-12-04T17:26:23.205Z'),
-        flags: ['persistence']
-      };
-
-      expect(extractResultFromObservation(observation)).toEqual(expectedResult);
-
-    });
-  
-  });
-
 });
-
 
 
 describe('Testing of generateObservationId function', () => {
 
   test('Should correctly generate observation id (with resultTime as string)', () => {
-    const timeseriesId = '507f1f77bcf86cd799439011';
+    const timeseriesId = 543;
     const resultTime = '2019-12-06T14:57:18.838Z';
-    const expected = '507f1f77bcf86cd799439011-2019-12-06T14:57:18.838Z';
+    const expected = '543-0-2019-12-06T14:57:18.838Z';
     expect(generateObservationId(timeseriesId, resultTime)).toBe(expected);
   });
 
   test('Should correctly generate observation id (with resultTime as date)', () => {
-    const timeseriesId = '507f1f77bcf86cd799439011';
+    const timeseriesId = 543;
     const resultTime = new Date('2019-12-06T14:57:18.838Z');
-    const expected = '507f1f77bcf86cd799439011-2019-12-06T14:57:18.838Z';
+    const expected = '543-0-2019-12-06T14:57:18.838Z';
     expect(generateObservationId(timeseriesId, resultTime)).toBe(expected);
   });  
+
+  test('Should correctly generate observation id when a location is included', () => {
+    const timeseriesId = 543;
+    const locationId = 23;
+    const resultTime = '2019-12-06T14:57:18.838Z';
+    const expected = '543-23-2019-12-06T14:57:18.838Z';
+    expect(generateObservationId(timeseriesId, resultTime, locationId)).toBe(expected);
+  });
 
 });
 
 
 describe('Testing of deconstructObservationId function', () => {
 
-  test('Should correctly deconstruct', () => {
-    const id = '507f1f77bcf86cd799439011-2019-12-06T14:57:18.838Z';
+  test('Should correctly deconstruct when location was available', () => {
+    const id = '25-54-2019-12-06T14:57:18.838Z';
     const expected = {
-      timeseriesId: '507f1f77bcf86cd799439011',
+      timeseriesId: 25,
+      resultTime: new Date('2019-12-06T14:57:18.838Z'),
+      locationId: 54
+    };
+    expect(deconstructObservationId(id)).toEqual(expected);
+  });
+
+  test('Should correctly deconstruct when location was NOT available', () => {
+    const id = '25-0-2019-12-06T14:57:18.838Z';
+    const expected = {
+      timeseriesId: 25,
       resultTime: new Date('2019-12-06T14:57:18.838Z')
     };
     expect(deconstructObservationId(id)).toEqual(expected);

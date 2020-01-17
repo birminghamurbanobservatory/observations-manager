@@ -1,3 +1,5 @@
+import {LocationClient} from '../location/location-client.class';
+
 export class ObservationClient {
   public id?: string;
   public madeBySensor?: string;
@@ -8,6 +10,7 @@ export class ObservationClient {
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;
   public usedProcedures?: string[];
+  public location?: LocationClient
 }
 
 class Result {

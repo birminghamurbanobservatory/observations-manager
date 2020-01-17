@@ -1,8 +1,8 @@
 import {TimeseriesProps} from './timeseries-props.class';
 import * as check from 'check-types';
 import {TimeseriesApp} from './timeseries-app.class';
-import {TimeseriesRow} from './timeseries-row.class';
-import {sortBy, cloneDeep} from 'lodash';
+import {TimeseriesDb} from './timeseries-db.class';
+import {sortBy} from 'lodash';
 import {TimeseriesNotFound} from './errors/TimeseriesNotFound';
 import {GetTimeseriesFail} from './errors/GetTimeseriesFail';
 import {GetTimeseriesUsingIdsFail} from './errors/GetTimeseriesUsingIdsFail';
@@ -36,7 +36,7 @@ export async function createTimeseriesTable(): Promise<void> {
   // Add a GIST index for hosted_by_path ltree column
   await knex.raw('CREATE INDEX timeseries_hosted_by_path_index ON timeseries USING GIST (hosted_by_path);');
   // Add a GIN index for in_deployments
-  await knex.raw('CREATE INDEX timeseries_in_deployments_index ON timeseres USING GIN(in_deployments)');
+  await knex.raw('CREATE INDEX timeseries_in_deployments_index ON timeseries USING GIN(in_deployments)');
 
   return;
 }
@@ -44,12 +44,12 @@ export async function createTimeseriesTable(): Promise<void> {
 
 export async function createTimeseries(timeseries: TimeseriesApp): Promise<TimeseriesApp> {
 
-  const timeseriesRow = timeseriesAppToDb(timeseries);
+  const timeseriesDb = timeseriesAppToDb(timeseries);
 
-  let createdTimeseries: TimeseriesRow;
+  let createdTimeseries: TimeseriesDb;
   try {
     const result = await knex('timeseries')
-    .insert(timeseriesRow)
+    .insert(timeseriesDb)
     .returning('*');
     createdTimeseries = result[0];
   } catch (err) {
@@ -61,7 +61,7 @@ export async function createTimeseries(timeseries: TimeseriesApp): Promise<Times
 }
 
 
-export async function updateTimeseries(id: string, updates: any): Promise<TimeseriesApp> {
+export async function updateTimeseries(id: number, updates: any): Promise<TimeseriesApp> {
 
   const updatesFormatted = timeseriesAppToDb(updates);
 
@@ -85,11 +85,11 @@ export async function updateTimeseries(id: string, updates: any): Promise<Timese
 }
 
 
-export async function getTimeseries(id: string): Promise<TimeseriesApp> {
+export async function getTimeseries(id: number): Promise<TimeseriesApp> {
 
-  let timeseriesRow: TimeseriesRow;
+  let timeseriesDb: TimeseriesDb;
   try {
-    timeseriesRow = await knex('timeseires')
+    timeseriesDb = await knex('timeseries')
     .select()
     .where({id})
     .first();
@@ -97,18 +97,18 @@ export async function getTimeseries(id: string): Promise<TimeseriesApp> {
     throw new GetTimeseriesFail(undefined, err.message);
   }
 
-  if (!timeseriesRow) {
+  if (!timeseriesDb) {
     throw new TimeseriesNotFound(`A timeseries with id '${id}' could not be found`);
   }
 
-  return timeseriesDbToApp(timeseriesRow);
+  return timeseriesDbToApp(timeseriesDb);
 
 }
 
 // i.e. find multiple timeseries
 export async function findTimeseries(where: TimeseriesWhere): Promise<TimeseriesApp[]> {
 
-  let timeseries: TimeseriesRow[];
+  let timeseries: TimeseriesDb[];
 
   try {
     timeseries = await knex('timeseries')
@@ -395,7 +395,7 @@ export function convertPropsToExactWhere(props: TimeseriesProps): any {
 
 
 
-export async function findTimeseriesUsingIds(ids: string[]): Promise<TimeseriesApp[]> {
+export async function findTimeseriesUsingIds(ids: number[]): Promise<TimeseriesApp[]> {
 
   let timeseries;
   try {
@@ -411,29 +411,29 @@ export async function findTimeseriesUsingIds(ids: string[]): Promise<TimeseriesA
 }
 
 
-export function timeseriesAppToDb(timeseriesApp: TimeseriesApp): TimeseriesRow {
+export function timeseriesAppToDb(timeseriesApp: TimeseriesApp): TimeseriesDb {
 
-  const timeseriesRow: any = convertKeysToSnakeCase(timeseriesApp);
+  const timeseriesDb: any = convertKeysToSnakeCase(timeseriesApp);
 
   // Make sure hostedByPath is in ltree format
-  if (timeseriesRow.hostedByPath) {
-    timeseriesRow.hostedByPath = arrayToLtreeString(timeseriesRow.hostedByPath);
+  if (timeseriesDb.hosted_by_path) {
+    timeseriesDb.hosted_by_path = arrayToLtreeString(timeseriesDb.hosted_by_path);
   }
 
   // Make sure inDeployments is sorted, makes it easier to search for exact matches.
-  if (timeseriesRow.inDeployments) {
-    timeseriesRow.inDeployments = sortBy(timeseriesRow.inDeployments);
+  if (timeseriesDb.in_deployments) {
+    timeseriesDb.in_deployments = sortBy(timeseriesDb.in_deployments);
   }
 
-  return timeseriesRow;
+  return timeseriesDb;
 
 }
 
 
 
-export function timeseriesDbToApp(timeseriesRow: TimeseriesRow): TimeseriesApp {
+export function timeseriesDbToApp(timeseriesDb: TimeseriesDb): TimeseriesApp {
   // TODO: For some reason stripNullProperties is changing {inDeployments: ['something']} to undefined. 
-  const timeseriesApp = convertKeysToCamelCase(stripNullProperties(timeseriesRow));
+  const timeseriesApp = convertKeysToCamelCase(stripNullProperties(timeseriesDb));
   if (timeseriesApp.hostedByPath) {
     timeseriesApp.hostedByPath = ltreeStringToArray(timeseriesApp.hostedByPath);
   }

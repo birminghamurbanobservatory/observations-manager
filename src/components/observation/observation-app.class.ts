@@ -1,3 +1,5 @@
+import {LocationApp} from '../location/location-app.class';
+
 export class ObservationApp {
   public id?: string;
   public madeBySensor?: string;
@@ -8,6 +10,7 @@ export class ObservationApp {
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;
   public usedProcedures?: string[];
+  public Location?: LocationApp;
 }
 
 class Result {

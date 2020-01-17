@@ -4,6 +4,7 @@ import * as logger from 'node-logger';
 import {createObservationsTable} from '../components/observation/observation.service';
 import {createTimeseriesTable} from '../components/timeseries/timeseries.service';
 import {connectToCorrectDb} from './connect-to-correct-db';
+import {createLocationsTable} from '../components/location/location.service';
 
 
 export async function initialiseDb(): Promise<void> {
@@ -46,6 +47,10 @@ export async function initialiseDb(): Promise<void> {
     {
       name: 'timeseries',
       itsCreateFunction: createTimeseriesTable
+    },
+    {
+      name: 'locations',
+      itsCreateFunction: createLocationsTable
     },
     {
       name: 'observations',

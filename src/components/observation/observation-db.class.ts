@@ -1,7 +1,8 @@
-export class ObservationRow {
+export class ObservationDb {
   public id?: number;
-  public timeseries?: string;
+  public timeseries?: number;
   public result_time?: string;
+  public location?: number;
   public value_number?: number;
   public value_boolean?: boolean;
   public value_text?: string;
