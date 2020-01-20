@@ -240,7 +240,7 @@ function nthIndex(str: string, subString: string, nthOccurrence: number): number
 export function observationDbToCore(observationDb: ObservationDb): ObservationCore {
 
   const obsCore: ObservationCore = {
-    timeseries: observationDb.timeseries,
+    timeseries: Number(observationDb.timeseries),
     resultTime: new Date(observationDb.result_time)
   };
   if (observationDb.flags) {

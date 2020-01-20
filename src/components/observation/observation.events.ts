@@ -118,10 +118,10 @@ async function subscribeToObservationsGetRequests(): Promise<any> {
   const observationsGetRequestSchema = joi.object({
     where: joi.object({
       // let the controller check the where object
-    }),
+    }).unknown(),
     options: joi.object({
       // let the controller check this
-    })
+    }).unknown()
   })
   .required();
 

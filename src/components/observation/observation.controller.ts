@@ -253,7 +253,7 @@ const getObservationsWhereSchema = joi.object({
   // TODO: What about filtering by flags, or filtering out flagged observations, just watch properties like this aren't used to filter the timeseries documents, just the observation rows.
 })
 .required();
-// Decided not to have a minimum number of keys here, i.e. so that superusers or other microservices can get observations with limitations. The limitation will come from a pagination approach, whereby only so many observations can be returned per request.
+// Decided not to have a minimum number of keys here, i.e. so that superusers or other microservices can get observations without limitations. The limitation will come from a pagination approach, whereby only so many observations can be returned per request.
 
 const getObservationsOptionsSchema = joi.object({
   limit: joi.number()
@@ -265,11 +265,11 @@ const getObservationsOptionsSchema = joi.object({
     .integer()
     .positive()
     .default(0)
-  // TODO: Provide the option to include/exclude the location objects. 
+  // TODO: Provide the option to include/exclude the location objects.
 })
 .required();
 
-export async function getObservations(where, options): Promise<ObservationClient[]> {
+export async function getObservations(where = {}, options = {}): Promise<ObservationClient[]> {
 
   const {error: whereErr, value: whereValidated} = getObservationsWhereSchema.validate(where);
   if (whereErr) throw new BadRequest(whereErr.message);
@@ -303,8 +303,11 @@ export async function getObservations(where, options): Promise<ObservationClient
   if (obsCores.length > 0 && !timeseries) {
     // Get the timeseriesIds from the obs
     const timeseriesIdsFromObs = uniq(obsCores.map((obsCore) => obsCore.timeseries));
+    logger.debug('Getting the timeseries based on the timeseries ids in the observations retrieved.', timeseriesIdsFromObs);
     timeseries = await findTimeseriesUsingIds(timeseriesIdsFromObs);
   }
+
+  // TODO: Replace all this with a JOIN instead, now that the timeseries are held in timescaledb table.
 
   const observations = observationService.buildObservations(obsCores, timeseries);
 
