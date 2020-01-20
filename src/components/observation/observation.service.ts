@@ -1,7 +1,6 @@
 import {ObservationCore} from './observation-core.class';
 import {ObservationApp} from './observation-app.class';
-import {pick, cloneDeep, concat} from 'lodash';
-import {TimeseriesApp} from '../timeseries/timeseries-app.class';
+import {pick, cloneDeep, sortBy} from 'lodash';
 import {TimeseriesProps} from '../timeseries/timeseries-props.class';
 import {ObservationClient} from './observation-client.class';
 import {ObservationDb} from './observation-db.class';
@@ -12,6 +11,12 @@ import {knex} from '../../db/knex';
 import * as check from 'check-types';
 import {CreateObservationFail} from './errors/CreateObservationFail';
 import {GetObservationsFail} from './errors/GetObservationsFail';
+import {ObservationsWhere} from './observations-where.class';
+import {stripNullProperties} from '../../utils/strip-null-properties';
+import {convertKeysToCamelCase} from '../../utils/class-converters';
+import {locationAppToClient} from '../location/location.service';
+import {ltreeStringToArray, platformIdToAnywhereLquery, arrayToLtreeString} from '../../db/db-helpers';
+
 
 
 export async function createObservationsTable(): Promise<void> {
@@ -19,7 +24,7 @@ export async function createObservationsTable(): Promise<void> {
   await knex.schema.createTable('observations', (table): void => {
 
     table.specificType('id', 'BIGSERIAL'); // Don't set this as primary or else create_hypertable won't work.
-    table.string('timeseries', 24).notNullable(); // 24 is the length of a Mongo ObjectID string
+    table.integer('timeseries', 24).notNullable(); // 24 is the length of a Mongo ObjectID string
     table.timestamp('result_time', {useTz: true}).notNullable();
     table.bigInteger('location');
     table.specificType('value_number', 'numeric');
@@ -47,7 +52,9 @@ export async function createObservationsTable(): Promise<void> {
 }
 
 
-
+//-------------------------------------------------
+// Save Observation
+//-------------------------------------------------
 export async function saveObservation(obsCore: ObservationCore, timeseriesId: number): Promise<any> {
 
   const observationDb = buildObservationDb(obsCore, timeseriesId);
@@ -71,19 +78,49 @@ export async function saveObservation(obsCore: ObservationCore, timeseriesId: nu
 }
 
 
+const columnsToSelectDuringJoin = [
+  'observations.id AS id',
+  'observations.timeseries as timeseries_id',
+  'observations.location as location_id',
+  'observations.result_time',
+  'observations.value_number',
+  'observations.value_boolean',
+  'observations.value_text',
+  'observations.value_json',
+  'observations.flags',
+  'timeseries.made_by_sensor',
+  'timeseries.in_deployments',
+  'timeseries.hosted_by_path',
+  'timeseries.has_feature_of_interest',
+  'timeseries.observed_property',
+  'timeseries.used_procedures',
+  'locations.client_id as location_client_id',
+  'locations.geojson as location_geojson',
+  'locations.valid_at as location_valid_at'    
+];
 
 
-export async function getObservationById(id: string): Promise<ObservationCore> {
+//-------------------------------------------------
+// Get Observation
+//-------------------------------------------------
+export async function getObservationByClientId(id: string): Promise<ObservationApp> {
 
-  const {timeseriesId, resultTime} = deconstructObservationId(id);
+  const {timeseriesId, resultTime, locationId} = deconstructObservationId(id);
 
   let foundObservation;
   try {
     const result = await knex('observations')
-    .select()
-    .where({
-      timeseries: timeseriesId,
-      result_time: resultTime
+    .select(columnsToSelectDuringJoin)
+    .leftJoin('timeseries', 'observations.timeseries', 'timeseries.id')
+    .leftJoin('locations', 'observations.location', 'locations.id')
+    .where((builder) => {
+      builder.where('timeseries', timeseriesId);
+      builder.where('result_time', resultTime);
+      if (locationId) {
+        builder.where('location', locationId);
+      } else {
+        builder.whereNull('location');
+      }
     });
     foundObservation = result[0];
   } catch (err) {
@@ -94,39 +131,243 @@ export async function getObservationById(id: string): Promise<ObservationCore> {
     throw new ObservationNotFound(`Failed to find an observation with ID '${id}'`);
   }
 
-  return observationDbToCore(foundObservation);
+  return observationDbToApp(foundObservation);
 
 }
 
 
+export async function getObservations(where: ObservationsWhere, options: {limit?: number, offset?: number}): Promise<ObservationApp[]> {
 
-export async function getObservations(where: {timeseriesIds?: string[]; resultTime?: any; flags?: any}, options: {limit?: number, offset?: number}): Promise<ObservationCore[]> {
-
-  // TODO: Need to make sure there's a max limit applied on the numbers of observations than can be retrieved at once.
-  // TODO: Need to actually filter by timeseriesIds.
-  // TODO: It is possible no timeseriesIds have been provided, in which case just get all the most recent observations, as many as the limit allows. E.g. a request could have come from another microservice that just wants the last n observations from wherever.
-  // TODO: resultTime can be an object with lt, gt, gte, lte properties.
-  // TODO: need to be able to specify that flags should not exist ($exists: false), as well as being able to filter by specific flags.
-
-
-  let foundObservations;
+  let observations;
   try {
-    const result = await knex('observations')
-    .select()
+    observations = await knex('observations')
+    .select(columnsToSelectDuringJoin)
+    .leftJoin('timeseries', 'observations.timeseries', 'timeseries.id')
+    .leftJoin('locations', 'observations.location', 'locations.id')
     .where((builder) => {
-      if (where.timeseriesIds) {
-        builder.whereIn('timeseries', where.timeseriesIds);
+
+      // resultTime
+      if (check.assigned(where.resultTime)) {
+        if (check.nonEmptyString(where.resultTime) || check.date(where.resultTime)) {
+          // This is in case I allow clients to request observations at an exact resultTime  
+          builder.where('observations.resultTime', where.resultTime);
+        }
+        if (check.nonEmptyObject(where.resultTime)) {
+          if (check.assigned(where.resultTime.gte)) {
+            builder.where('observations.resultTime', '>=', where.resultTime);
+          }
+          if (check.assigned(where.resultTime.gt)) {
+            builder.where('observations.resultTime', '>', where.resultTime);
+          }
+          if (check.assigned(where.resultTime.lte)) {
+            builder.where('observations.resultTime', '<=', where.resultTime);
+          }      
+          if (check.assigned(where.resultTime.lt)) {
+            builder.where('observations.resultTime', '<', where.resultTime);
+          }      
+
+        }
       }
+
+      // madeBySensor
+      if (check.assigned(where.madeBySensor)) {
+        if (check.nonEmptyString(where.madeBySensor)) {
+          builder.where('timeseries.made_by_sensor', where.madeBySensor);
+        }
+        if (check.nonEmptyObject(where.madeBySensor)) {
+          if (check.nonEmptyArray(where.madeBySensor.in)) {
+            builder.whereIn('timeseries.made_by_sensor', where.madeBySensor.in);
+          }
+          if (check.boolean(where.madeBySensor.exists)) {
+            if (where.madeBySensor.exists === true) {
+              builder.whereNotNull('timeseries.made_by_sensor');
+            } 
+            if (where.madeBySensor.exists === false) {
+              builder.whereNull('timeseries.made_by_sensor');
+            }
+          }     
+        }
+      }
+
+      // inDeployment
+      if (check.assigned(where.inDeployment)) {
+        if (check.nonEmptyString(where.inDeployment)) {
+          // Find any timeseries whose in_deployments array contains this one deployment (if there are others in the array then it will still match)
+          builder.where('timeseries.in_deployments', '&&', [where.inDeployment]);
+        }
+        if (check.nonEmptyObject(where.inDeployment)) {
+          if (check.nonEmptyArray(where.inDeployment.in)) {
+            // i.e. looking for any overlap
+            builder.where('timeseries.in_deployments', '&&', where.inDeployment.in);
+          }
+          if (check.boolean(where.inDeployment.exists)) {
+            if (where.inDeployment.exists === true) {
+              builder.whereNotNull('timeseries.in_deployments');
+            } 
+            if (where.inDeployment.exists === false) {
+              builder.whereNull('timeseries.in_deployments');
+            }              
+          }
+        }
+      }      
+
+      // inDeployments - for an exact match (after sorting alphabetically)
+      if (check.assigned(where.inDeployments)) {
+        if (check.nonEmptyArray(where.inDeployments)) {
+          builder.where('timeseries.in_deployments', sortBy(where.inDeployments));
+        }
+        if (check.nonEmptyObject(where.inDeployments)) {
+          // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
+          if (check.boolean(where.inDeployments.exists)) {
+            if (where.inDeployments.exists === true) {
+              builder.whereNotNull('timeseries.in_deployments');
+            } 
+            if (where.inDeployments.exists === false) {
+              builder.whereNull('timeseries.in_deployments');
+            }              
+          }
+        }
+      }      
+
+      // hostedByPath (used for finding exact matches)
+      if (check.assigned(where.hostedByPath)) {
+        if (check.nonEmptyArray(where.hostedByPath)) {
+          builder.where('timeseries.hosted_by_path', arrayToLtreeString(where.hostedByPath));
+        }
+        if (check.nonEmptyObject(where.hostedByPath)) {
+          if (check.nonEmptyArray(where.hostedByPath.in)) {
+            const ltreeStrings = where.hostedByPath.in.map(arrayToLtreeString);
+            builder.where('timeseries.hosted_by_path', '?', ltreeStrings);
+          }
+          if (check.boolean(where.hostedByPath.exists)) {
+            if (where.hostedByPath.exists === true) {
+              builder.whereNotNull('timeseries.hosted_by_path');
+            } 
+            if (where.hostedByPath.exists === false) {
+              builder.whereNull('timeseries.hosted_by_path');
+            }              
+          }
+        }
+      }
+
+      // isHostedBy
+      if (check.assigned(where.isHostedBy)) {
+        if (check.nonEmptyString(where.isHostedBy)) {
+          builder.where('timeseries.hosted_by_path', '~', platformIdToAnywhereLquery(where.isHostedBy));
+        }
+        if (check.nonEmptyObject(where.isHostedBy)) {
+          if (check.nonEmptyArray(where.isHostedBy.in)) {
+            const ltreeStrings = where.isHostedBy.in.map(platformIdToAnywhereLquery);
+            builder.where('timeseries.hosted_by_path', '?', ltreeStrings);
+          }
+        }
+      }
+
+      // hostedByPathSpecial
+      if (check.assigned(where.hostedByPathSpecial)) {
+        if (check.nonEmptyString(where.hostedByPathSpecial)) {
+          builder.where('timeseries.hosted_by_path', '~', where.hostedByPathSpecial);
+        }
+        if (check.nonEmptyObject(where.hostedByPathSpecial)) {
+          if (check.nonEmptyArray(where.hostedByPathSpecial.in)) {
+            builder.where('timeseries.hosted_by_path', '?', where.hostedByPathSpecial.in);
+          }
+        }
+      }
+
+
+      // hasFeatureOfInterest
+      if (check.assigned(where.hasFeatureOfInterest)) {
+        if (check.nonEmptyString(where.hasFeatureOfInterest)) {
+          builder.where('timeseries.has_feature_of_interest', where.hasFeatureOfInterest);
+        }
+        if (check.nonEmptyObject(where.hasFeatureOfInterest)) {
+          if (check.nonEmptyArray(where.hasFeatureOfInterest.in)) {
+            builder.whereIn('timeseries.has_feature_of_interest', where.hasFeatureOfInterest.in);
+          }
+          if (check.boolean(where.hasFeatureOfInterest.exists)) {
+            if (where.hasFeatureOfInterest.exists === true) {
+              builder.whereNotNull('timeseries.has_feature_of_interest');
+            } 
+            if (where.hasFeatureOfInterest.exists === false) {
+              builder.whereNull('timeseries.has_feature_of_interest');
+            }
+          }     
+        }
+      }
+
+      // observedProperty
+      if (check.assigned(where.observedProperty)) {
+        if (check.nonEmptyString(where.observedProperty)) {
+          builder.where('timeseries.observed_property', where.observedProperty);
+        }
+        if (check.nonEmptyObject(where.observedProperty)) {
+          if (check.nonEmptyArray(where.observedProperty.in)) {
+            builder.whereIn('timeseries.observed_property', where.observedProperty.in);
+          }
+          if (check.boolean(where.observedProperty.exists)) {
+            if (where.observedProperty.exists === true) {
+              builder.whereNotNull('timeseries.observed_property');
+            } 
+            if (where.observedProperty.exists === false) {
+              builder.whereNull('timeseries.observed_property');
+            }
+          }     
+        }
+      }
+
+      // usedProcedure
+      if (check.assigned(where.usedProcedure)) {
+        if (check.nonEmptyString(where.usedProcedure)) {
+          // Find any timeseries whose used_procedures array contains this one procedure (if there are others in the array then it will still match)
+          builder.where('timeseries.used_procedures', '&&', [where.usedProcedure]);
+        }
+        if (check.nonEmptyObject(where.usedProcedure)) {
+          if (check.nonEmptyArray(where.usedProcedure.in)) {
+            // i.e. looking for any overlap
+            builder.where('timeseries.used_procedures', '&&', where.usedProcedure.in);
+          }
+          if (check.boolean(where.usedProcedure.exists)) {
+            if (where.usedProcedure.exists === true) {
+              builder.whereNotNull('timeseries.used_procedures');
+            } 
+            if (where.usedProcedure.exists === false) {
+              builder.whereNull('timeseries.used_procedures');
+            }              
+          }
+        }
+      }  
+
+      // usedProcedures (for an exact match)
+      if (check.assigned(where.usedProcedures)) {
+        if (check.nonEmptyArray(where.usedProcedures)) {
+          builder.where('timeseries.used_procedures', where.usedProcedures);
+        }
+        if (check.nonEmptyObject(where.usedProcedures)) {
+          // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
+          if (check.boolean(where.usedProcedures.exists)) {
+            if (where.usedProcedures.exists === true) {
+              builder.whereNotNull('timeseries.used_procedures');
+            } 
+            if (where.usedProcedures.exists === false) {
+              builder.whereNull('timeseries.used_procedures');
+            }              
+          }
+        }
+      }
+
+      // TODO: add spatial queries
+      // TODO: filter by flags
+      // Allow =, >=, <, etc on the numeric values.
+
     })
     .limit(options.limit || 100000)
     .offset(options.offset || 0);
-    foundObservations = result;
   } catch (err) {
     throw new GetObservationsFail(undefined, err.message);
   }
 
-
-  return foundObservations.map(observationDbToCore);
+  return observations.map(observationDbToApp);
 
 }
 
@@ -144,6 +385,7 @@ export function extractCoreFromObservation(observation: ObservationApp): Observa
 }
 
 
+
 export function extractTimeseriesPropsFromObservation(observation: ObservationApp): TimeseriesProps {
 
   const props = pick(observation, [
@@ -159,52 +401,12 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
 }
 
 
-export function buildObservation(obsCore: ObservationCore, timeseries: TimeseriesApp): ObservationApp {
-
-  const observation: ObservationApp = pick(timeseries, [
-    'madeBySensor',
-    'inDeployments',
-    'hostedByPath',
-    'observedProperty',
-    'hasFeatureOfInterest',
-    'usedProcedures'
-  ]);
-
-  observation.id = generateObservationId(timeseries.id, obsCore.resultTime);
-  observation.resultTime = obsCore.resultTime;
-  observation.hasResult = {
-    value: obsCore.value,
-  };
-  if (obsCore.flags) {
-    observation.hasResult.flags = obsCore.flags;
-  }
-
-  return observation;
-}
-
-
-// TODO: Might be worth trying to optimise this at some point
-export function buildObservations(obsCores: ObservationCore[], timeseries: TimeseriesApp[]): ObservationApp[] {
-
-  // Makes sense to loop through the obs rather than the timeseries given that it may be worth maintaining the order of the observations
-  const observations = obsCores.map((obsCore) => {
-    const matchingTimeseries = timeseries.find((ts) => ts.id === obsCore.timeseries);
-    if (!matchingTimeseries) {
-      throw new Error('No matching timeseries found to build obs from');
-    }
-    const observation = buildObservation(obsCore, matchingTimeseries);
-    return observation;
-  });
-
-  return observations;
-}
-
 
 // N.B: This approach won't work if there's ever a situation when you get more that one observation from a given timeseries at the same resultTime and location. The most likely reason you'd have two observations at the same time is if you apply a procedure that manipulated the data in some way, however this would change the userProcedures array, and therefore the timeseriesId, so this particular example doesn't pose any issues to using this approach.
 // N.B. The location id is included, because perhaps you have a sensor that can make simulataneous observations as several locations, if you don't incorporate the location then it will only allow you to save a single observation as they'll all have the same resultTime.
 // N.B. we default to the locationId to 0 if no locationId is given, e.g. the obs didn't have a specific location.
-export function generateObservationId(timeseriesId: number, resultTime: string | Date, locationId = 0): string {
-  return `${timeseriesId}-${locationId}-${new Date(resultTime).toISOString()}`;
+export function generateObservationId(timeseriesId: number, resultTime: string | Date, locationId?): string {
+  return `${timeseriesId}-${locationId || 0}-${new Date(resultTime).toISOString()}`;
 }
 
 
@@ -298,14 +500,80 @@ export function buildObservationDb(obsCore: ObservationCore, timeseriesId: numbe
 }
 
 
+export function observationDbToApp(observationDb): ObservationApp {
+
+  const observationApp: any = convertKeysToCamelCase(observationDb);
+
+  observationApp.id = Number(observationApp.id); // comes back as string for some reason.
+  observationApp.resultTime = new Date(observationApp.resultTime);
+  observationApp.clientId = generateObservationId(
+    observationApp.timeseriesId, 
+    observationApp.resultTime, 
+    observationApp.locationId
+  );
+
+  if (observationApp.locationId) {
+    observationApp.location = {
+      id: observationApp.locationId,
+      clientId: observationApp.locationClientId,
+      geometry: observationApp.locationGeojson,
+      validAt: new Date(observationApp.locationValidAt)
+    };
+  }
+
+  delete observationApp.locationId;
+  delete observationApp.locationClientId;
+  delete observationApp.locationGeojson;
+  delete observationApp.locationValidAt;
+
+  observationApp.hasResult = {};
+
+  // Find the value column that's not null
+  if (observationApp.valueNumber !== null) {
+    // For some reason the values from the value_number column are coming back as strings, so lets convert them back to a number here.
+    observationApp.hasResult.value = Number(observationApp.valueNumber);
+  } else if (observationApp.valueBoolean !== null) {
+    observationApp.hasResult.value = observationApp.valueBoolean;
+  } else if (observationApp.valueText !== null) {
+    observationApp.hasResult.value = observationApp.valueText;
+  } else if (observationApp.valueJson !== null) {
+    observationApp.hasResult.value = observationApp.valueJson;
+  }  
+
+  delete observationApp.valueNumber;
+  delete observationApp.valueBoolean;
+  delete observationApp.valueText;
+  delete observationApp.valueJson;
+
+  if (observationApp.flags) {
+    observationApp.hasResult.flags = observationApp.flags;
+  }
+  delete observationApp.flags;
+
+  if (observationApp.hostedByPath) {
+    observationApp.hostedByPath = ltreeStringToArray(observationApp.hostedByPath);
+  }
+
+  const observationAppNoNulls = stripNullProperties(observationApp);
+  return observationAppNoNulls;
+
+}
+
+
 export function observationClientToApp(observationClient: ObservationClient): ObservationApp {
-  const observationApp = cloneDeep(observationClient);
+  const observationApp: any = cloneDeep(observationClient);
   observationApp.resultTime = new Date(observationApp.resultTime);
   return observationApp;
 }
 
 
 export function observationAppToClient(observationApp: ObservationApp): ObservationClient {
-  const observationClient = cloneDeep(observationApp);
+  const observationClient: any = cloneDeep(observationApp);
+  observationClient.id = observationClient.clientId;
+  delete observationClient.clientId;
+  delete observationClient.timeseriesId;
+  if (observationClient.location) {
+    observationClient.location = locationAppToClient(observationClient.location);
+  }
   return observationClient;
 }

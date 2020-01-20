@@ -1,7 +1,9 @@
 import {LocationApp} from '../location/location-app.class';
 
 export class ObservationApp {
-  public id?: string;
+  public id?: number;
+  public clientId?: string;
+  public timeseriesId?: number;
   public madeBySensor?: string;
   public hasResult?: Result;
   public resultTime?: string | Date;
@@ -10,7 +12,7 @@ export class ObservationApp {
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;
   public usedProcedures?: string[];
-  public Location?: LocationApp;
+  public location?: LocationApp;
 }
 
 class Result {

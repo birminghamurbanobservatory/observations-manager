@@ -68,5 +68,21 @@ describe('Test stripNullProperties function', () => {
   });    
 
 
+  test('Does not mess up objects', () => {
+    const input = { 
+      hasResult: {
+        value: 22.2
+      }
+    };
+    const expected = {
+      hasResult: {
+        value: 22.2
+      }
+    };
+    const output = stripNullProperties(input);
+    expect(output).toEqual(expected);
+  });  
+
+
 });
 

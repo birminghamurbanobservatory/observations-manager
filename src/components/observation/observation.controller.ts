@@ -1,5 +1,5 @@
 import {ObservationClient} from './observation-client.class';
-import {extractTimeseriesPropsFromObservation, extractCoreFromObservation, buildObservation, observationClientToApp, observationAppToClient} from './observation.service';
+import {extractTimeseriesPropsFromObservation, extractCoreFromObservation, observationClientToApp, observationAppToClient} from './observation.service';
 import * as observationService from '../observation/observation.service';
 import {getTimeseries, findTimeseries, findTimeseriesUsingIds, findSingleMatchingTimeseries, convertPropsToExactWhere, updateTimeseries, createTimeseries} from '../timeseries/timeseries.service';
 import * as logger from 'node-logger';
@@ -13,10 +13,14 @@ import {TimeseriesApp} from '../timeseries/timeseries-app.class';
 import {locationClientToApp, getLocationByClientId, createLocation, locationAppToClient} from '../location/location.service';
 import {validateGeometry} from '../../utils/geojson-validator';
 import {GeometryMismatch} from './errors/GeometryMismatch';
+import * as check from 'check-types';
 
 const maxObsPerRequest = config.obs.maxPerRequest;
 
 
+//-------------------------------------------------
+// Create Observation
+//-------------------------------------------------
 const createObservationSchema = joi.object({
   madeBySensor: joi.string().required(),
   hasResult: joi.object({
@@ -31,6 +35,7 @@ const createObservationSchema = joi.object({
   usedProcedures: joi.array().min(1).items(joi.string()),
   location: joi.object({
     id: joi.string().guid(), // this is the client_id, a uuid,
+    validAt: joi.string().isoDate(),
     geometry: joi.object({
       type: joi.string().required(),
       coordinates: joi.array().required()
@@ -77,6 +82,10 @@ export async function createObservation(observation: ObservationClient): Promise
     }
     if (!matchingLocation) {
       logger.debug('Creating a new location');
+      // Use the observation resultTime as the validAt time for the location if it hasn't been specifically provided.
+      if (check.not.assigned(locationFromObs.validAt)) {
+        locationFromObs.validAt = new Date(observation.resultTime);
+      }
       matchingLocation = await createLocation(locationFromObs);
       logger.debug('New location created', matchingLocation);
     }
@@ -141,26 +150,29 @@ export async function createObservation(observation: ObservationClient): Promise
   logger.debug('Created Observation Core', createdObsCore);
   logger.debug(`Upserted timeseries.`, upsertedTimeseries);
 
-  const createdObservation = buildObservation(createdObsCore, upsertedTimeseries);
+  let newObservationClientId;
+  if (matchingLocation) {
+    newObservationClientId = observationService.generateObservationId(upsertedTimeseries.id, createdObsCore.resultTime, matchingLocation.id);
+  } else {
+    newObservationClientId = observationService.generateObservationId(upsertedTimeseries.id, createdObsCore.resultTime);
+  }
+
+  const createdObservation = await observationService.getObservationByClientId(newObservationClientId);
   logger.debug('Complete saved observation', createdObservation);
 
   const createdObservationForClient = observationAppToClient(createdObservation);
-  if (matchingLocation) {
-    createdObservationForClient.location = locationAppToClient(matchingLocation);
-  }
   return createdObservationForClient;
 
 }
 
 
-
+//-------------------------------------------------
+// Get Observation
+//-------------------------------------------------
 export async function getObservation(id: string): Promise<ObservationClient> {
 
   logger.debug(`Getting observation with id '${id}'`);
-  const {timeseriesId} = observationService.deconstructObservationId(id);
-  const obsCore = await observationService.getObservationById(id);
-  const timeseries = await getTimeseries(timeseriesId);
-  const observation = buildObservation(obsCore, timeseries);
+  const observation = await observationService.getObservationByClientId(id);
   logger.debug('Observation found', observation);
   return observationService.observationAppToClient(observation);
 
@@ -168,7 +180,9 @@ export async function getObservation(id: string): Promise<ObservationClient> {
 
 
 
-
+//-------------------------------------------------
+// Get Observations
+//-------------------------------------------------
 const getObservationsWhereSchema = joi.object({
   resultTime: joi.object({
     lt: joi.string().isoDate(),
@@ -276,43 +290,13 @@ export async function getObservations(where = {}, options = {}): Promise<Observa
   const {error: optionsErr, value: optionsValidated} = getObservationsOptionsSchema.validate(options);
   if (whereErr) throw new BadRequest(optionsErr.message);
 
-  // If no "where" parameters have been provided that allow us to filter down the timeseriesId we need to search by, then best to get observations first, and then get their timeseries after so we can give the observations some extra metadata.
-  const whereKeys = Object.keys(whereValidated);
-  const getObsBeforeTimeseries = whereKeys.length === 0 || (whereKeys.length === 1 && whereKeys[0] === 'resultTime');
-
-  let timeseries;
-  let timeseriesIds;
-
-  if (!getObsBeforeTimeseries) {
-    // Find any matching timeseries
-    timeseries = await findTimeseries(whereValidated);
-    timeseriesIds = timeseries.map((ts): string => ts.id);
-  }
-
-  // Now to get all the observations for these timeseries
-  // TODO: do I need this function to also tell us whether if hit the maximum obs limit?
-  const obsCores = await observationService.getObservations({
-    timeseriesIds
-    // TODO: add resultTime and flags params.
-  }, {
+  const observations = await observationService.getObservations(whereValidated, {
     limit: optionsValidated.limit,
     offset: optionsValidated.offset
   });
 
-  // If we need to get timeseries info AFTER having got the obs
-  if (obsCores.length > 0 && !timeseries) {
-    // Get the timeseriesIds from the obs
-    const timeseriesIdsFromObs = uniq(obsCores.map((obsCore) => obsCore.timeseries));
-    logger.debug('Getting the timeseries based on the timeseries ids in the observations retrieved.', timeseriesIdsFromObs);
-    timeseries = await findTimeseriesUsingIds(timeseriesIdsFromObs);
-  }
-
-  // TODO: Replace all this with a JOIN instead, now that the timeseries are held in timescaledb table.
-
-  const observations = observationService.buildObservations(obsCores, timeseries);
-
   const observationsForClient = observations.map(observationService.observationAppToClient);
-
+  logger.debug(`Got ${observationsForClient.length} observations.`, observationsForClient);
   return observationsForClient;
 
 }

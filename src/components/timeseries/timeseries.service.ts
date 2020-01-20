@@ -326,6 +326,7 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
           }
         }
       }
+      
     });
 
   } catch (err) {

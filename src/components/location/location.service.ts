@@ -20,6 +20,7 @@ export async function createLocationsTable(): Promise<void> {
     table.text('client_id').unique().notNullable();
     table.specificType('geo', 'GEOGRAPHY').notNullable();
     table.jsonb('geojson').notNullable();
+    table.timestamp('valid_at', {useTz: true}).notNullable();
 
   });
 
@@ -68,7 +69,8 @@ export async function createLocation(location: LocationApp): Promise<LocationApp
       id: locationDb.id,
       client_id: locationDb.client_id,
       geojson: locationDb.geojson,
-      geo: knex.raw(`ST_GeomFromGeoJSON('${JSON.stringify(locationDb.geo)}')::geography`)
+      geo: knex.raw(`ST_GeomFromGeoJSON('${JSON.stringify(locationDb.geo)}')::geography`),
+      valid_at: locationDb.valid_at
     })
     .returning('*');
     createdLocation = result[0];
@@ -84,6 +86,9 @@ export async function createLocation(location: LocationApp): Promise<LocationApp
 export function locationClientToApp(locationClient: LocationClient): LocationApp {
   const locationApp: any = cloneDeep(locationClient);
   locationApp.clientId = locationClient.id;
+  if (locationApp.validAt) {
+    locationApp.validAt = new Date(locationApp.validAt);
+  }
   delete locationApp.id;
   return locationApp;
 }
