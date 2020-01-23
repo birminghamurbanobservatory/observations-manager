@@ -1,4 +1,4 @@
-import {extractTimeseriesPropsFromObservation, buildObservation, generateObservationId, deconstructObservationId} from './observation.service';
+import {extractTimeseriesPropsFromObservation, generateObservationId, deconstructObservationId} from './observation.service';
 
 
 describe('Testing of extractTimeseriesPropsFromObservation function', () => {
@@ -48,50 +48,6 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
       usedProcedures: ['point-sample']      
     };
     expect(extractTimeseriesPropsFromObservation(observation)).toEqual(expected);
-  });
-
-});
-
-
-describe('Testing of buildObservation function', () => {
-
-  test('Builds observation as expected', () => {
-    
-    const result = {
-      value: 22.3,
-      resultTime: new Date('2019-12-04T17:26:23.205Z'),
-      flags: ['persistence']
-    };
-
-    const timeseries = {
-      id: 5432,
-      startDate: new Date('2019-12-04T13:22:23.133Z'),
-      endDate: new Date('2019-12-04T17:26:23.205Z'),
-      madeBySensor: 'sensor-123',
-      inDeployments: ['deployment-1'],
-      hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
-      observedProperty: 'air-temp', 
-      usedProcedures: ['point-sample']          
-    };
-
-    const expected = {
-      id: '5432-0-2019-12-04T17:26:23.205Z',
-      madeBySensor: 'sensor-123',
-      inDeployments: ['deployment-1'],
-      hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
-      observedProperty: 'air-temp', 
-      usedProcedures: ['point-sample'],
-      resultTime: new Date('2019-12-04T17:26:23.205Z'),        
-      hasResult: {
-        value: 22.3,
-        flags: ['persistence']
-      } 
-    };
-
-    expect(buildObservation(result, timeseries)).toEqual(expected);
-
   });
 
 });
