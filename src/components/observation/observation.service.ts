@@ -570,6 +570,7 @@ export function observationClientToApp(observationClient: ObservationClient): Ob
 export function observationAppToClient(observationApp: ObservationApp): ObservationClient {
   const observationClient: any = cloneDeep(observationApp);
   observationClient.id = observationClient.clientId;
+  observationClient.resultTime = observationClient.resultTime.toISOString();
   delete observationClient.clientId;
   delete observationClient.timeseriesId;
   if (observationClient.location) {
