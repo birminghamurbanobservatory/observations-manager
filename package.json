@@ -12,7 +12,7 @@
     "build:live": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts",
     "docker:build": "docker build -t gcr.io/urban-observatory/observations-manager:$npm_package_version .",
     "docker:push": "docker push gcr.io/urban-observatory/observations-manager:$npm_package_version",
-    "dockerise": "npm run docker:build && npm run docker:push"
+    "dockerise": "npm run build && npm run docker:build && npm run docker:push"
   },
   "author": "Simon Bell",
   "license": "ISC",
