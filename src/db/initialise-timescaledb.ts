@@ -27,13 +27,14 @@ export async function initialiseDb(): Promise<void> {
   // Check that the extensions we need are installed
   const timescaledbExtensionInstalled = await checkForExtension('timescaledb');
   if (!timescaledbExtensionInstalled) {
-    throw new Error('Timescaledb extension is not installed');
+    await knex.raw('CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;');
+    logger.info('Timescaledb extension installed, because it was not yet installed.');
   }
 
   const postgisExtensionInstalled = await checkForExtension('postgis');
   if (!postgisExtensionInstalled) {
     await knex.raw('CREATE EXTENSION postgis');
-    logger.info('postgis entension installed, because it was not yet installed.');
+    logger.info('postgis extension installed, because it was not yet installed.');
   }
   
   const ltreeExtensionInstalled = await checkForExtension('ltree');

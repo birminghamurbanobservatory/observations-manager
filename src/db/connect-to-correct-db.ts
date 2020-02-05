@@ -14,8 +14,10 @@ export async function connectToCorrectDb(): Promise<void> {
     connection: {
       host: config.timescale.host,
       user: config.timescale.user,
+      port: config.timescale.port,
       password: config.timescale.password,
-      database: config.timescale.name
+      database: config.timescale.name,
+      ssl: config.timescale.ssl
     }
   });
 
@@ -47,7 +49,7 @@ export async function connectToCorrectDb(): Promise<void> {
 
   if (needToCreateCorrectDb) {
     
-    logger.warn(`A database called ${config.timescale.name} does not exist yet so lets try creating one. But first we must connect to the default 'postgres' database.`);
+    logger.warn(`A database called ${config.timescale.name} does not exist yet so lets try creating one. But first we must connect to the default '${config.timescale.defaultDbName}' database.`);
 
     await knex1.destroy();
     const knex2 = require('knex')({
@@ -55,8 +57,10 @@ export async function connectToCorrectDb(): Promise<void> {
       connection: {
         host: config.timescale.host,
         user: config.timescale.user,
+        port: config.timescale.port,
         password: config.timescale.password,
-        database: 'postgres' // i.e. the default
+        database: config.timescale.defaultDbName,
+        ssl: config.timescale.ssl
       }
     });
 
@@ -84,8 +88,10 @@ export async function connectToCorrectDb(): Promise<void> {
       connection: {
         host: config.timescale.host,
         user: config.timescale.user,
+        port: config.timescale.port,
         password: config.timescale.password,
-        database: config.timescale.name
+        database: config.timescale.name,
+        ssl: config.timescale.ssl
       }
     });
 

@@ -10,12 +10,18 @@ import * as joi from '@hapi/joi';
 const schema = joi.object({
   TIMESCALE_HOST: joi.string()
     .required(),
+  TIMESCALE_PORT: joi.number()
+    .required(),    
   TIMESCALE_USER: joi.string()
     .required(),
   TIMESCALE_PASSWORD: joi.string()
     .required(),
   TIMESCALE_NAME: joi.string()
-    .required()
+    .required(),
+  TIMESCALE_SSL: joi.boolean()
+    .required(),
+  TIMESCALE_DEFAULT_DB_NAME: joi.string()
+    .required() 
 }).unknown() // allows for extra fields (i.e that we don't check for) in the object being checked.
   .required();
 
@@ -38,7 +44,10 @@ if (err) {
 // Pull out the properties we need to create this particular config object. 
 export const timescale = {
   host: envVars.TIMESCALE_HOST,
+  port: envVars.TIMESCALE_PORT,
   user: envVars.TIMESCALE_USER,
   password: envVars.TIMESCALE_PASSWORD,
-  name: envVars.TIMESCALE_NAME
+  name: envVars.TIMESCALE_NAME,
+  ssl: envVars.TIMESCALE_SSL,
+  defaultDbName: envVars.TIMESCALE_DEFAULT_DB_NAME
 };
