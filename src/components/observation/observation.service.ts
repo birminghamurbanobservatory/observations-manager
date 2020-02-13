@@ -35,6 +35,11 @@ export async function createObservationsTable(): Promise<void> {
     table.jsonb('value_json');
     table.specificType('flags', 'text ARRAY'); // https://www.postgresql.org/docs/9.1/arrays.html
 
+    table.foreign('timeseries')
+    .references('id')
+    .inTable('timeseries')
+    .withKeyName('timeseries_id');
+
     table.foreign('location')
     .references('id')
     .inTable('locations')
@@ -44,7 +49,7 @@ export async function createObservationsTable(): Promise<void> {
 
   // Create the hypertable
   await knex.raw(`SELECT create_hypertable('observations', 'result_time');`);
-  // TODO: By default this will create an index called observations_result_time_idx, should I delete this given that I'll create one below that also uses the timeseries and will be used instead anyway? 
+  // By default this will create an index called observations_result_time_idx, according to the TimescaleDB tech team it's worth keeping this index even though I create another below that'll use far more often. 
   // N.B. if you want a custom primary key, or a unique index, then you must include the result_time.
   // docs: https://docs.timescale.com/latest/using-timescaledb/schema-management#indexing
   await knex.raw('CREATE UNIQUE INDEX timeseries_spatiotemporal_uniq_idx ON observations (timeseries, result_time, location DESC)');
