@@ -8,7 +8,8 @@ export function logCensorAndRethrow(eventName, err): any {
   // Operational Errors
   //------------------------
   if (err instanceof OperationalError) {
-    logger.warn(`Operational error whilst handling ${eventName} event.`, err);
+    // For now at least, I'll log these as as a full error.
+    logger.error(`Operational error whilst handling ${eventName} event.`, err);
     throw err;
 
   //------------------------
