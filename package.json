@@ -40,7 +40,6 @@
     "@typescript-eslint/parser": "^2.10.0",
     "eslint": "^6.7.2",
     "jest": "^24.9.0",
-    "mongodb-memory-server": "^6.0.2",
     "nodemon": "^2.0.1",
     "ts-jest": "^24.2.0",
     "ts-node": "^8.5.4",
