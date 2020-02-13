@@ -26,6 +26,8 @@ export async function createObservationsTable(): Promise<void> {
     table.specificType('id', 'BIGSERIAL'); // Don't set this as primary or else create_hypertable won't work.
     table.integer('timeseries', 24).notNullable(); // 24 is the length of a Mongo ObjectID string
     table.timestamp('result_time', {useTz: true}).notNullable();
+    table.timestamp('has_beginning', {useTz: true});
+    table.timestamp('has_end', {useTz: true});
     table.bigInteger('location');
     table.specificType('value_number', 'numeric');
     table.boolean('value_boolean');
@@ -83,6 +85,8 @@ const columnsToSelectDuringJoin = [
   'observations.timeseries as timeseries_id',
   'observations.location as location_id',
   'observations.result_time',
+  'observations.has_beginning',
+  'observations.has_end',
   'observations.value_number',
   'observations.value_boolean',
   'observations.value_text',
@@ -376,10 +380,18 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
 export function extractCoreFromObservation(observation: ObservationApp): ObservationCore {
   const obsCore: ObservationCore = {
     value: observation.hasResult.value,
-    resultTime: new Date(observation.resultTime)
+    resultTime: observation.resultTime
   };
   if (observation.hasResult.flags) {
     obsCore.flags = observation.hasResult.flags;
+  }
+  if (observation.phenomenonTime) {
+    if (observation.phenomenonTime.hasBeginning) {
+      obsCore.hasBeginning = observation.phenomenonTime.hasBeginning;
+    }
+    if (observation.phenomenonTime.hasEnd) {
+      obsCore.hasEnd = observation.phenomenonTime.hasEnd;
+    }
   }
   return obsCore;
 }
@@ -448,6 +460,12 @@ export function observationDbToCore(observationDb: ObservationDb): ObservationCo
   if (observationDb.flags) {
     obsCore.flags = observationDb.flags;
   }
+  if (observationDb.has_beginning) {
+    obsCore.hasBeginning = new Date(observationDb.has_beginning);
+  }
+  if (observationDb.has_end) {
+    obsCore.hasEnd = new Date(observationDb.has_end);
+  }
 
   // Find the column that's not null
   if (observationDb.value_number !== null) {
@@ -469,7 +487,7 @@ export function observationDbToCore(observationDb: ObservationDb): ObservationCo
 export function buildObservationDb(obsCore: ObservationCore, timeseriesId: number): ObservationDb {
   
   const observationDb: ObservationDb = {
-    result_time: new Date(obsCore.resultTime).toISOString(),
+    result_time: obsCore.resultTime.toISOString(),
     timeseries: timeseriesId
   };
   if (obsCore.flags && obsCore.flags.length > 0) {
@@ -477,6 +495,12 @@ export function buildObservationDb(obsCore: ObservationCore, timeseriesId: numbe
   }
   if (obsCore.location) {
     observationDb.location = obsCore.location;
+  }
+  if (obsCore.hasBeginning) {
+    observationDb.has_beginning = obsCore.hasBeginning.toISOString();
+  }
+  if (obsCore.hasEnd) {
+    observationDb.has_end = obsCore.hasEnd.toISOString();
   }
 
   if (check.number(obsCore.value)) {
@@ -526,6 +550,18 @@ export function observationDbToApp(observationDb): ObservationApp {
   delete observationApp.locationGeojson;
   delete observationApp.locationValidAt;
 
+  if (observationApp.hasBeginning || observationApp.hasEnd) {
+    observationApp.phenomenonTime = {};
+    if (observationApp.hasBeginning) {
+      observationApp.phenomenonTime.hasBeginning = new Date(observationApp.hasBeginning);
+      delete observationApp.hasBeginning;
+    }
+    if (observationApp.hasEnd) {
+      observationApp.phenomenonTime.hasEnd = new Date(observationApp.hasEnd);
+      delete observationApp.hasEnd;
+    }
+  }
+
   observationApp.hasResult = {};
 
   // Find the value column that's not null
@@ -563,6 +599,14 @@ export function observationDbToApp(observationDb): ObservationApp {
 export function observationClientToApp(observationClient: ObservationClient): ObservationApp {
   const observationApp: any = cloneDeep(observationClient);
   observationApp.resultTime = new Date(observationApp.resultTime);
+  if (observationApp.phenomenonTime) {
+    if (observationApp.phenomenonTime.hasBeginning) {
+      observationApp.phenomenonTime.hasBeginning = new Date(observationApp.phenomenonTime.hasBeginning);
+    }
+    if (observationApp.phenomenonTime.hasEnd) {
+      observationApp.phenomenonTime.hasEnd = new Date(observationApp.phenomenonTime.hasEnd);
+    }
+  }
   return observationApp;
 }
 
@@ -575,6 +619,14 @@ export function observationAppToClient(observationApp: ObservationApp): Observat
   delete observationClient.timeseriesId;
   if (observationClient.location) {
     observationClient.location = locationAppToClient(observationClient.location);
+  }
+  if (observationClient.phenomenonTime) {
+    if (observationClient.phenomenonTime.hasBeginning) {
+      observationClient.phenomenonTime.hasBeginning = observationClient.phenomenonTime.hasBeginning.toISOString();
+    }
+    if (observationClient.phenomenonTime.hasEnd) {
+      observationClient.phenomenonTime.hasEnd = observationClient.phenomenonTime.hasEnd.toISOString();
+    }
   }
   return observationClient;
 }

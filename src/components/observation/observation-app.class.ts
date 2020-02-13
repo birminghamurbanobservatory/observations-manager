@@ -6,7 +6,8 @@ export class ObservationApp {
   public timeseriesId?: number;
   public madeBySensor?: string;
   public hasResult?: Result;
-  public resultTime?: string | Date;
+  public phenomenonTime?: PhenomenonTime
+  public resultTime?: Date;
   public inDeployments?: string[];
   public hostedByPath?: string[];
   public hasFeatureOfInterest?: string;
@@ -18,4 +19,9 @@ export class ObservationApp {
 class Result {
   public value: any;
   public flags?: string[];
+}
+
+class PhenomenonTime {
+  public hasBeginning: Date;
+  public hasEnd: Date;
 }

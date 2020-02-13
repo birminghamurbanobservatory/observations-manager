@@ -28,6 +28,10 @@ const createObservationSchema = joi.object({
     flags: joi.array().min(1).items(joi.string())
   }).required(),
   resultTime: joi.string().isoDate().required(),
+  phenomenonTime: joi.object({
+    hasBeginning: joi.string().isoDate(),
+    hasEnd: joi.string().isoDate()
+  }),
   inDeployments: joi.array().min(1).items(joi.string()),
   hostedByPath: joi.array().min(1).items(joi.string()),
   hasFeatureOfInterest: joi.string(),
