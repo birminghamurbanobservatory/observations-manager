@@ -7,7 +7,7 @@ import {TimeseriesNotFound} from './errors/TimeseriesNotFound';
 import {GetTimeseriesFail} from './errors/GetTimeseriesFail';
 import {GetTimeseriesUsingIdsFail} from './errors/GetTimeseriesUsingIdsFail';
 import {knex} from '../../db/knex';
-import {convertKeysToSnakeCase, convertKeysToCamelCase} from '../../utils/class-converters';
+import {convertKeysToSnakeCase, convertKeysToCamelCase} from '../../utils/case-converters';
 import {stripNullProperties} from '../../utils/strip-null-properties';
 import {TimeseriesWhere} from './timeseries-where.class';
 import {arrayToLtreeString, ltreeStringToArray, platformIdToAnywhereLquery} from '../../db/db-helpers';

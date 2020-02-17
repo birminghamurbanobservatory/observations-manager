@@ -13,7 +13,7 @@ import {CreateObservationFail} from './errors/CreateObservationFail';
 import {GetObservationsFail} from './errors/GetObservationsFail';
 import {ObservationsWhere} from './observations-where.class';
 import {stripNullProperties} from '../../utils/strip-null-properties';
-import {convertKeysToCamelCase} from '../../utils/class-converters';
+import {convertKeysToCamelCase} from '../../utils/case-converters';
 import {locationAppToClient} from '../location/location.service';
 import {ltreeStringToArray, platformIdToAnywhereLquery, arrayToLtreeString} from '../../db/db-helpers';
 

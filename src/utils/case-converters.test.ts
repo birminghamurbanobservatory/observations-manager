@@ -1,4 +1,4 @@
-import {convertKeysToCamelCase, convertKeysToSnakeCase} from './class-converters';
+import {convertKeysToCamelCase, convertKeysToSnakeCase} from './case-converters';
 
 
 //-------------------------------------------------

@@ -4,7 +4,7 @@ import {LocationApp} from './location-app.class';
 import {cloneDeep} from 'lodash';
 import {LocationNotFound} from './errors/LocationNotFound';
 import {GetLocationByClientIdFail} from './errors/GetLocationByClientIdFail';
-import {convertKeysToCamelCase, convertKeysToSnakeCase} from '../../utils/class-converters';
+import {convertKeysToCamelCase, convertKeysToSnakeCase} from '../../utils/case-converters';
 import {stripNullProperties} from '../../utils/strip-null-properties';
 import {LocationDb} from './location-db.class';
 import {CreateLocationFail} from './errors/CreateLocationFail';
