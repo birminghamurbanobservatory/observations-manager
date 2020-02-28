@@ -102,7 +102,7 @@ const columnsToSelectDuringJoin = [
   'timeseries.hosted_by_path',
   'timeseries.has_feature_of_interest',
   'timeseries.observed_property',
-  'timeseries.used_procedures',
+  'timeseries.used_procedure',
   'locations.client_id as location_client_id',
   'locations.geojson as location_geojson',
   'locations.valid_at as location_valid_at'    
@@ -325,23 +325,63 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         }
       }
 
+      // discipline
+      if (check.assigned(where.discipline)) {
+        if (check.nonEmptyString(where.discipline)) {
+          // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
+          builder.where('timeseries.discipline', '&&', [where.discipline]);
+        }
+        if (check.nonEmptyObject(where.discipline)) {
+          if (check.nonEmptyArray(where.discipline.in)) {
+            // i.e. looking for any overlap
+            builder.where('timeseries.discipline', '&&', where.discipline.in);
+          }
+          if (check.boolean(where.discipline.exists)) {
+            if (where.discipline.exists === true) {
+              builder.whereNotNull('timeseries.discipline');
+            } 
+            if (where.discipline.exists === false) {
+              builder.whereNull('timeseries.discipline');
+            }              
+          }
+        }
+      }  
+
+      // disciplines
+      if (check.assigned(where.disciplines)) {
+        if (check.nonEmptyArray(where.disciplines)) {
+          builder.where('timeseries.discipline', where.disciplines);
+        }
+        if (check.nonEmptyObject(where.disciplines)) {
+          // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
+          if (check.boolean(where.disciplines.exists)) {
+            if (where.disciplines.exists === true) {
+              builder.whereNotNull('timeseries.discipline');
+            } 
+            if (where.disciplines.exists === false) {
+              builder.whereNull('timeseries.discipline');
+            }              
+          }
+        }
+      }
+
       // usedProcedure
       if (check.assigned(where.usedProcedure)) {
         if (check.nonEmptyString(where.usedProcedure)) {
-          // Find any timeseries whose used_procedures array contains this one procedure (if there are others in the array then it will still match)
-          builder.where('timeseries.used_procedures', '&&', [where.usedProcedure]);
+          // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
+          builder.where('timeseries.discipline', '&&', [where.usedProcedure]);
         }
         if (check.nonEmptyObject(where.usedProcedure)) {
           if (check.nonEmptyArray(where.usedProcedure.in)) {
             // i.e. looking for any overlap
-            builder.where('timeseries.used_procedures', '&&', where.usedProcedure.in);
+            builder.where('timeseries.discipline', '&&', where.usedProcedure.in);
           }
           if (check.boolean(where.usedProcedure.exists)) {
             if (where.usedProcedure.exists === true) {
-              builder.whereNotNull('timeseries.used_procedures');
+              builder.whereNotNull('timeseries.discipline');
             } 
             if (where.usedProcedure.exists === false) {
-              builder.whereNull('timeseries.used_procedures');
+              builder.whereNull('timeseries.discipline');
             }              
           }
         }
@@ -350,16 +390,16 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
       // usedProcedures (for an exact match)
       if (check.assigned(where.usedProcedures)) {
         if (check.nonEmptyArray(where.usedProcedures)) {
-          builder.where('timeseries.used_procedures', where.usedProcedures);
+          builder.where('timeseries.used_procedure', where.usedProcedures);
         }
         if (check.nonEmptyObject(where.usedProcedures)) {
           // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
           if (check.boolean(where.usedProcedures.exists)) {
             if (where.usedProcedures.exists === true) {
-              builder.whereNotNull('timeseries.used_procedures');
+              builder.whereNotNull('timeseries.used_procedure');
             } 
             if (where.usedProcedures.exists === false) {
-              builder.whereNull('timeseries.used_procedures');
+              builder.whereNull('timeseries.used_procedure');
             }              
           }
         }
@@ -411,7 +451,8 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
     'hostedByPath',
     'observedProperty',
     'hasFeatureOfInterest',
-    'usedProcedures'
+    'discipline',
+    'usedProcedure'
   ]);
 
   return props;
@@ -419,7 +460,7 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
 
 
 
-// N.B: This approach won't work if there's ever a situation when you get more that one observation from a given timeseries at the same resultTime and location. The most likely reason you'd have two observations at the same time is if you apply a procedure that manipulated the data in some way, however this would change the userProcedures array, and therefore the timeseriesId, so this particular example doesn't pose any issues to using this approach.
+// N.B: This approach won't work if there's ever a situation when you get more that one observation from a given timeseries at the same resultTime and location. The most likely reason you'd have two observations at the same time is if you apply a procedure that manipulated the data in some way, however this would change the userProcedure array, and therefore the timeseriesId, so this particular example doesn't pose any issues to using this approach.
 // N.B. The location id is included, because perhaps you have a sensor that can make simulataneous observations as several locations, if you don't incorporate the location then it will only allow you to save a single observation as they'll all have the same resultTime.
 // N.B. we default to the locationId to 0 if no locationId is given, e.g. the obs didn't have a specific location.
 export function generateObservationId(timeseriesId: number, resultTime: string | Date, locationId?): string {

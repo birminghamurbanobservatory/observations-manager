@@ -8,5 +8,6 @@ export class TimeseriesDb {
   // TODO: Need to have isHostedBy here too? For the sake of observation locations updates?
   public has_feature_of_interest?: string;
   public observed_property?: string;
-  public used_procedures?: string[];
+  public discipline?: string[];
+  public used_procedure?: string[];
 }

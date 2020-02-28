@@ -36,7 +36,8 @@ const createObservationSchema = joi.object({
   hostedByPath: joi.array().min(1).items(joi.string()),
   hasFeatureOfInterest: joi.string(),
   observedProperty: joi.string(),
-  usedProcedures: joi.array().min(1).items(joi.string()),
+  discipline: joi.array().min(1).items(joi.string()),
+  usedProcedure: joi.array().min(1).items(joi.string()),
   location: joi.object({
     id: joi.string().guid(), // this is the client_id, a uuid,
     validAt: joi.string().isoDate(),
@@ -254,16 +255,27 @@ const getObservationsWhereSchema = joi.object({
       exists: joi.boolean()
     }).min(1)
   ),
+  discipline: joi.alternatives().try(
+    joi.string(),
+    joi.object({
+      in: joi.array().items(joi.string()).min(1)
+    }).min(1)
+  ),
+  disciplines: joi.alternatives().try( // for an exact match of the whole array
+    joi.array().items(joi.string()).min(1),
+    joi.object({
+      exists: joi.boolean()
+    }).min(1)
+  ),
   usedProcedure: joi.alternatives().try(
     joi.string(),
     joi.object({
       in: joi.array().items(joi.string()).min(1)
     }).min(1)
   ),
-  usedProcedures: joi.alternatives().try(
+  usedProcedures: joi.alternatives().try( // for an exact match of the whole array
     joi.array().items(joi.string()).min(1),
     joi.object({
-      // don't yet support 'in' here.
       exists: joi.boolean()
     }).min(1)
   ),

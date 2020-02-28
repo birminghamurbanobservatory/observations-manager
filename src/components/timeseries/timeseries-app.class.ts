@@ -7,5 +7,6 @@ export class TimeseriesApp {
   public hostedByPath?: string[];
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;
-  public usedProcedures?: string[];
+  public discipline?: string[];
+  public usedProcedure?: string[];
 }

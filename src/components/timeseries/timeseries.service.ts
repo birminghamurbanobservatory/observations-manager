@@ -28,7 +28,8 @@ export async function createTimeseriesTable(): Promise<void> {
     table.specificType('hosted_by_path', 'ltree');
     table.string('has_feature_of_interest');
     table.string('observed_property');
-    table.specificType('used_procedures', 'TEXT[]');
+    table.specificType('discipline', 'TEXT[]');
+    table.specificType('used_procedure', 'TEXT[]');
 
   });
 
@@ -290,20 +291,20 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
       // usedProcedure
       if (check.assigned(where.usedProcedure)) {
         if (check.nonEmptyString(where.usedProcedure)) {
-          // Find any timeseries whose used_procedures array contains this one procedure (if there are others in the array then it will still match)
-          builder.where('used_procedures', '&&', [where.usedProcedure]);
+          // Find any timeseries whose used_procedure array contains this one procedure (if there are others in the array then it will still match)
+          builder.where('used_procedure', '&&', [where.usedProcedure]);
         }
         if (check.nonEmptyObject(where.usedProcedure)) {
           if (check.nonEmptyArray(where.usedProcedure.in)) {
             // i.e. looking for any overlap
-            builder.where('used_procedures', '&&', where.usedProcedure.in);
+            builder.where('used_procedure', '&&', where.usedProcedure.in);
           }
           if (check.boolean(where.usedProcedure.exists)) {
             if (where.usedProcedure.exists === true) {
-              builder.whereNotNull('used_procedures');
+              builder.whereNotNull('used_procedure');
             } 
             if (where.usedProcedure.exists === false) {
-              builder.whereNull('used_procedures');
+              builder.whereNull('used_procedure');
             }              
           }
         }
@@ -312,16 +313,16 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
       // usedProcedures (for an exact match)
       if (check.assigned(where.usedProcedures)) {
         if (check.nonEmptyArray(where.usedProcedures)) {
-          builder.where('used_procedures', where.usedProcedures);
+          builder.where('used_procedure', where.usedProcedures);
         }
         if (check.nonEmptyObject(where.usedProcedures)) {
           // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
           if (check.boolean(where.usedProcedures.exists)) {
             if (where.usedProcedures.exists === true) {
-              builder.whereNotNull('used_procedures');
+              builder.whereNotNull('used_procedure');
             } 
             if (where.usedProcedures.exists === false) {
-              builder.whereNull('used_procedures');
+              builder.whereNull('used_procedure');
             }              
           }
         }
@@ -372,14 +373,14 @@ export async function findSingleMatchingTimeseries(where: TimeseriesWhere): Prom
 export function convertPropsToExactWhere(props: TimeseriesProps): any {
 
   const findQuery: any = {};
-  const potentialProps = ['madeBySensor', 'inDeployments', 'hostedByPath', 'observedProperty', 'hasFeatureOfInterest', 'usedProcedures'];
-
-  // For the inDeployments array the order has no meaning, and thus we should sort the array just in case the deployments are provided out of order at some point.
+  const potentialProps = ['madeBySensor', 'inDeployments', 'hostedByPath', 'observedProperty', 'hasFeatureOfInterest', 'discipline', 'usedProcedure'];
+  const orderNotImportantProps = ['inDeployments', 'discipline'];
+  // For the inDeployments and discipline array the order has no meaning, and thus we should sort the array just in case they are every provided in a different order at some point.
 
   potentialProps.forEach((propKey) => {
 
     if (check.assigned(props[propKey])) {
-      if (propKey === 'inDeployments') {
+      if (orderNotImportantProps.includes(propKey)) {
         findQuery[propKey] = sortBy(props[propKey]);
       } else {
         findQuery[propKey] = props[propKey];
@@ -392,7 +393,6 @@ export function convertPropsToExactWhere(props: TimeseriesProps): any {
 
   return findQuery;
 }
-
 
 
 

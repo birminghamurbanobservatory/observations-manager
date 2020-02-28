@@ -10,13 +10,15 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
         value: '12'
       },
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
-      hasFeatureOfInterest: 'weather',
-      observedProperty: 'air-temp',
+      hasFeatureOfInterest: 'EarthAtmosphere',
+      observedProperty: 'AirTemperature',
+      discipline: ['Meteorology']
     };
     const expected = {
       madeBySensor: 'sensor-123',
-      hasFeatureOfInterest: 'weather',
-      observedProperty: 'air-temp'     
+      hasFeatureOfInterest: 'EarthAtmosphere',
+      observedProperty: 'AirTemperature',
+      discipline: ['Meteorology']     
     };
     expect(extractTimeseriesPropsFromObservation(observation)).toEqual(expected);
   });
@@ -31,17 +33,19 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
-      observedProperty: 'air-temp', 
-      usedProcedures: ['point-sample']
+      hasFeatureOfInterest: 'EarthAtmosphere',
+      observedProperty: 'AirTemperature', 
+      discipline: ['Meteorology'],
+      usedProcedure: ['PointSample']
     };
     const expected = {
       madeBySensor: 'sensor-123',
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
-      observedProperty: 'air-temp', 
-      usedProcedures: ['point-sample']      
+      hasFeatureOfInterest: 'EarthAtmosphere',
+      observedProperty: 'AirTemperature', 
+      discipline: ['Meteorology'],
+      usedProcedure: ['PointSample']      
     };
     expect(extractTimeseriesPropsFromObservation(observation)).toEqual(expected);
   });
@@ -114,9 +118,9 @@ describe('observationClientToApp function tests', () => {
       resultTime: '2019-12-04T17:26:23.205Z',
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
-      observedProperty: 'air-temp', 
-      usedProcedures: ['point-sample']
+      hasFeatureOfInterest: 'EarthAtmosphere',
+      observedProperty: 'AirTemperature', 
+      usedProcedure: ['PointSample']
     };
 
     const expected = {
@@ -127,9 +131,9 @@ describe('observationClientToApp function tests', () => {
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
-      observedProperty: 'air-temp', 
-      usedProcedures: ['point-sample']
+      hasFeatureOfInterest: 'EarthAtmosphere',
+      observedProperty: 'AirTemperature', 
+      usedProcedure: ['PointSample']
     };
 
     const observationApp = observationClientToApp(observationClient);
@@ -151,7 +155,7 @@ describe('observationClientToApp function tests', () => {
       },
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
+      hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth'
     };
 
@@ -167,7 +171,7 @@ describe('observationClientToApp function tests', () => {
       },
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
+      hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth'
     };
 
@@ -194,9 +198,9 @@ describe('observationAppToClient function tests', () => {
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
-      observedProperty: 'air-temp', 
-      usedProcedures: ['point-sample']
+      hasFeatureOfInterest: 'EarthAtmosphere',
+      observedProperty: 'AirTemperature', 
+      usedProcedure: ['PointSample']
     };
 
     const expected = {
@@ -208,9 +212,9 @@ describe('observationAppToClient function tests', () => {
       resultTime: '2019-12-04T17:26:23.205Z',
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
-      observedProperty: 'air-temp', 
-      usedProcedures: ['point-sample']
+      hasFeatureOfInterest: 'EarthAtmosphere',
+      observedProperty: 'AirTemperature', 
+      usedProcedure: ['PointSample']
     };
 
     const observationClient = observationAppToClient(observationApp);
@@ -235,7 +239,7 @@ describe('observationAppToClient function tests', () => {
       },
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
+      hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth'
     };
 
@@ -252,7 +256,7 @@ describe('observationAppToClient function tests', () => {
       },
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'weather',
+      hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth'
     };
 
@@ -283,9 +287,9 @@ describe('observationDbToApp function tests', () => {
       made_by_sensor: 'rain-gauge-123',
       in_deployments: ['deployment-1'],
       hosted_by_path: 'bob-back-garden.platform-1',
-      has_feature_of_interest: 'weather',
+      has_feature_of_interest: 'EarthAtmosphere',
       observed_property: 'precipitation-depth',
-      used_procedures: ['tip-sum'],
+      used_procedure: ['tip-sum'],
       location_client_id: '146380a6-0614-48ce-a0ae-a1bf935f015c',
       location_geojson: {type: 'Point', coordinates: [-1.9, 52.9]},
       location_valid_at: '2019-07-05T12:43:24.621Z' 
@@ -305,9 +309,9 @@ describe('observationDbToApp function tests', () => {
       madeBySensor: 'rain-gauge-123',
       inDeployments: ['deployment-1'],
       hostedByPath: ['bob-back-garden', 'platform-1'],
-      hasFeatureOfInterest: 'weather',
+      hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth',
-      usedProcedures: ['tip-sum'],
+      usedProcedure: ['tip-sum'],
       timeseriesId: 54,
       location: {
         id: 33,

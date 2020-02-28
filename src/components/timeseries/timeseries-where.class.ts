@@ -12,6 +12,8 @@ export class TimeseriesWhere {
   public hostedByPathSpecial?: any; // allows lquery syntax
   public hasFeatureOfInterest?: any;
   public observedProperty?: any;
+  public discipline?: any;
+  public disciplines?: any;
   public usedProcedure?: any;
   public usedProcedures?: any;
 }
