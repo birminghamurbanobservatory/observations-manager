@@ -345,7 +345,7 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
 export async function findSingleMatchingTimeseries(where: TimeseriesWhere): Promise<TimeseriesApp | void> {
 
   // Let's check every property we'll match by has been specified
-  const requiredProps = ['madeBySensor', 'inDeployments', 'hostedByPath', 'observedProperty', 'hasFeatureOfInterest', 'usedProcedure'];
+  const requiredProps = ['madeBySensor', 'inDeployments', 'hostedByPath', 'observedProperty', 'hasFeatureOfInterest', 'discipline', 'usedProcedure'];
   requiredProps.forEach((prop) => {
     if (check.not.assigned(where[prop])) {
       throw new Error(`The '${prop} property of the where object must be assigned.'`);
