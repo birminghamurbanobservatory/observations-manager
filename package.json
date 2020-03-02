@@ -15,6 +15,10 @@
     "dockerise": "npm run build && npm run docker:build && npm run docker:push"
   },
   "author": "Simon Bell",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/birminghamurbanobservatory/observations-manager.git"
+  },
   "license": "ISC",
   "dependencies": {
     "@hapi/joi": "^16.1.8",
