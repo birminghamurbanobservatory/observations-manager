@@ -139,6 +139,7 @@ async function subscribeToObservationsGetRequests(): Promise<any> {
     }
 
     return observations;
+    // TODO: Worth having this in an object, e.g. {observations: ?}, so that I can include other information, such as the total number of observations available that match this query.
   });
 
   logger.debug(`Subscribed to ${eventName} requests`);
