@@ -102,6 +102,7 @@ const columnsToSelectDuringJoin = [
   'timeseries.hosted_by_path',
   'timeseries.has_feature_of_interest',
   'timeseries.observed_property',
+  'timeseries.discipline',
   'timeseries.used_procedure',
   'locations.client_id as location_client_id',
   'locations.geojson as location_geojson',
