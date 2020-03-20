@@ -129,17 +129,16 @@ async function subscribeToObservationsGetRequests(): Promise<any> {
 
     logger.debug(`New ${eventName} message.`, message);
 
-    let observations: ObservationClient[];
+    let observationsData: {data: any[]; meta: any};
     try {
       const {error: err} = observationsGetRequestSchema.validate(message);
       if (err) throw new BadRequest(`Invalid ${eventName} request: ${err.message}`);
-      observations = await getObservations(message.where, message.options);
+      observationsData = await getObservations(message.where, message.options);
     } catch (err) {
       logCensorAndRethrow(eventName, err);
     }
 
-    return observations;
-    // TODO: Worth having this in an object, e.g. {observations: ?}, so that I can include other information, such as the total number of observations available that match this query.
+    return observationsData;
   });
 
   logger.debug(`Subscribed to ${eventName} requests`);

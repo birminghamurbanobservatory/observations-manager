@@ -299,7 +299,7 @@ const getObservationsOptionsSchema = joi.object({
 })
 .required();
 
-export async function getObservations(where = {}, options = {}): Promise<ObservationClient[]> {
+export async function getObservations(where = {}, options = {}): Promise<{data: ObservationClient[]; meta: any}> {
 
   const {error: whereErr, value: whereValidated} = getObservationsWhereSchema.validate(where);
   if (whereErr) throw new BadRequest(whereErr.message);
@@ -313,6 +313,10 @@ export async function getObservations(where = {}, options = {}): Promise<Observa
 
   const observationsForClient = observations.map(observationService.observationAppToClient);
   logger.debug(`Got ${observationsForClient.length} observations.`, observationsForClient);
-  return observationsForClient;
+  return {
+    data: observationsForClient,
+    // TODO: At some point you may want to calculate and return the total number of observations available, e.g. for pagination, this information will go in this meta object. I just need to make sure I can calculate this efficiently.
+    meta: {} 
+  };
 
 }
