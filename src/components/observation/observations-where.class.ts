@@ -12,6 +12,7 @@ export class ObservationsWhere {
   public disciplines?: any;
   public usedProcedure?: any;
   public usedProcedures?: any;
+  public flags?: any;
   // TODO: geospatial filters
 }
 

@@ -1,19 +1,20 @@
 import {ObservationClient} from './observation-client.class';
 import {extractTimeseriesPropsFromObservation, extractCoreFromObservation, observationClientToApp, observationAppToClient} from './observation.service';
 import * as observationService from '../observation/observation.service';
-import {getTimeseries, findTimeseries, findTimeseriesUsingIds, findSingleMatchingTimeseries, convertPropsToExactWhere, updateTimeseries, createTimeseries} from '../timeseries/timeseries.service';
+import {findSingleMatchingTimeseries, convertPropsToExactWhere, updateTimeseries, createTimeseries} from '../timeseries/timeseries.service';
 import * as logger from 'node-logger';
 import * as joi from '@hapi/joi';
 import {InvalidObservation} from './errors/InvalidObservation';
 import {BadRequest} from '../../errors/BadRequest';
 import {config} from '../../config';
-import {uniq, cloneDeep, isEqual} from 'lodash';
+import {cloneDeep, isEqual} from 'lodash';
 import {ObservationCore} from './observation-core.class';
 import {TimeseriesApp} from '../timeseries/timeseries-app.class';
 import {locationClientToApp, getLocationByClientId, createLocation, locationAppToClient} from '../location/location.service';
 import {validateGeometry} from '../../utils/geojson-validator';
 import {GeometryMismatch} from './errors/GeometryMismatch';
 import * as check from 'check-types';
+import {kebabCaseRegex} from '../../utils/regular-expressions';
 
 const maxObsPerRequest = config.obs.maxPerRequest;
 
@@ -279,8 +280,11 @@ const getObservationsWhereSchema = joi.object({
       exists: joi.boolean()
     }).min(1)
   ),
-  // Add in spatial queries
-  // TODO: What about filtering by flags, or filtering out flagged observations, just watch properties like this aren't used to filter the timeseries documents, just the observation rows.
+  // TODO: Add the ability to find observations with a specific flag
+  flags: joi.object({
+    exists: joi.boolean()
+  })
+  // TODO: Add in spatial queries
 })
 .required();
 // Decided not to have a minimum number of keys here, i.e. so that superusers or other microservices can get observations without limitations. The limitation will come from a pagination approach, whereby only so many observations can be returned per request.
@@ -294,7 +298,9 @@ const getObservationsOptionsSchema = joi.object({
   offset: joi.number()
     .integer()
     .positive()
-    .default(0)
+    .default(0),
+  onePer: joi.string()
+    .valid('sensor', 'timeseries') // TODO: add hosted_by_path at some point? Although this is tricker given the nested structure of platforms and that a sensor may not be on any platform.
   // TODO: Provide the option to include/exclude the location objects.
 })
 .required();
@@ -306,13 +312,10 @@ export async function getObservations(where = {}, options = {}): Promise<{data: 
   const {error: optionsErr, value: optionsValidated} = getObservationsOptionsSchema.validate(options);
   if (whereErr) throw new BadRequest(optionsErr.message);
 
-  const observations = await observationService.getObservations(whereValidated, {
-    limit: optionsValidated.limit,
-    offset: optionsValidated.offset
-  });
+  const observations = await observationService.getObservations(whereValidated, optionsValidated);
 
   const observationsForClient = observations.map(observationService.observationAppToClient);
-  logger.debug(`Got ${observationsForClient.length} observations.`, observationsForClient);
+  logger.debug(`Got ${observationsForClient.length} observations.`);
   return {
     data: observationsForClient,
     // TODO: At some point you may want to calculate and return the total number of observations available, e.g. for pagination, this information will go in this meta object. I just need to make sure I can calculate this efficiently.

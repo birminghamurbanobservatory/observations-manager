@@ -17,7 +17,7 @@ export async function createLocationsTable(): Promise<void> {
   await knex.schema.createTable('locations', (table): void => {
 
     table.bigIncrements('id');
-    table.text('client_id').unique().notNullable();
+    table.text('client_id').unique().notNullable(); // the unique method here should create an index
     table.specificType('geo', 'GEOGRAPHY').notNullable();
     table.jsonb('geojson').notNullable();
     table.timestamp('valid_at', {useTz: true}).notNullable();

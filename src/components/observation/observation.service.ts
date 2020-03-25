@@ -146,279 +146,657 @@ export async function getObservationByClientId(id: string): Promise<ObservationA
 }
 
 
-export async function getObservations(where: ObservationsWhere, options: {limit?: number, offset?: number}): Promise<ObservationApp[]> {
+export async function getObservations(where: ObservationsWhere, options: {limit?: number; offset?: number; onePer: string}): Promise<ObservationApp[]> {
+
+  // If the request is for "onePer" then it ends up being a fundamentally different SQL query, because we need to use a lateral join instead.
+  const onePerEnabled = check.assigned(options.onePer);
 
   let observations;
   try {
-    observations = await knex('observations')
-    .select(columnsToSelectDuringJoin)
-    .leftJoin('timeseries', 'observations.timeseries', 'timeseries.id')
-    .leftJoin('locations', 'observations.location', 'locations.id')
-    .where((builder) => {
 
-      // resultTime
-      if (check.assigned(where.resultTime)) {
-        if (check.nonEmptyString(where.resultTime) || check.date(where.resultTime)) {
-          // This is in case I allow clients to request observations at an exact resultTime  
-          builder.where('observations.resultTime', where.resultTime);
-        }
-        if (check.nonEmptyObject(where.resultTime)) {
-          if (check.assigned(where.resultTime.gte)) {
-            builder.where('observations.resultTime', '>=', where.resultTime);
+    //------------------------
+    // "onePer" requests
+    //------------------------
+    if (onePerEnabled) {
+
+      const mappings = {
+        sensor: 'made_by_sensor',
+        timeseries: 'id'
+      };
+
+      const distinctByColumn = mappings[options.onePer];
+      if (!distinctByColumn) {
+        throw new Error(`Invalid onePer value. Value is '${options.onePer}'.`);
+      }
+
+      const selectedTimeseriesAlias = 'subtimeseries';
+      const lateralDataAlias = 'lateraldata';
+
+      const extraClauses = buildExtraOnPerClauses(where);
+
+      observations = await knex
+      .select([
+        // You'll want the returned columns to be the same as for a normal non-onePer query.
+        `${lateralDataAlias}.id`,
+        `${lateralDataAlias}.timeseries as timeseries_id`,
+        `${lateralDataAlias}.location as location_id`,
+        `${lateralDataAlias}.result_time`,
+        `${lateralDataAlias}.has_beginning`,
+        `${lateralDataAlias}.has_end`,
+        `${lateralDataAlias}.value_number`,
+        `${lateralDataAlias}.value_boolean`,
+        `${lateralDataAlias}.value_text`,
+        `${lateralDataAlias}.value_json`,
+        `${lateralDataAlias}.flags`,
+        `${selectedTimeseriesAlias}.made_by_sensor`,
+        `${selectedTimeseriesAlias}.in_deployments`,
+        `${selectedTimeseriesAlias}.hosted_by_path`,
+        `${selectedTimeseriesAlias}.has_feature_of_interest`,
+        `${selectedTimeseriesAlias}.observed_property`,
+        `${selectedTimeseriesAlias}.discipline`,
+        `${selectedTimeseriesAlias}.used_procedure`,
+        `${lateralDataAlias}.location_client_id`,
+        `${lateralDataAlias}.location_geojson`,
+        `${lateralDataAlias}.location_valid_at` 
+      ])
+      .distinctOn(`${selectedTimeseriesAlias}.${distinctByColumn}`)
+      .from(function() {
+        this.select('*').from('timeseries')
+        .where((builder) => {
+          // These are basically the same as for a normal request, except we can only filter by columns that the timeseries table has.
+
+          // madeBySensor
+          if (check.assigned(where.madeBySensor)) {
+            if (check.nonEmptyString(where.madeBySensor)) {
+              builder.where('timeseries.made_by_sensor', where.madeBySensor);
+            }
+            if (check.nonEmptyObject(where.madeBySensor)) {
+              if (check.nonEmptyArray(where.madeBySensor.in)) {
+                builder.whereIn('timeseries.made_by_sensor', where.madeBySensor.in);
+              }
+              if (check.boolean(where.madeBySensor.exists)) {
+                if (where.madeBySensor.exists === true) {
+                  builder.whereNotNull('timeseries.made_by_sensor');
+                } 
+                if (where.madeBySensor.exists === false) {
+                  builder.whereNull('timeseries.made_by_sensor');
+                }
+              }     
+            }
           }
-          if (check.assigned(where.resultTime.gt)) {
-            builder.where('observations.resultTime', '>', where.resultTime);
-          }
-          if (check.assigned(where.resultTime.lte)) {
-            builder.where('observations.resultTime', '<=', where.resultTime);
+
+          // inDeployment
+          if (check.assigned(where.inDeployment)) {
+            if (check.nonEmptyString(where.inDeployment)) {
+              // Find any timeseries whose in_deployments array contains this one deployment (if there are others in the array then it will still match)
+              builder.where('timeseries.in_deployments', '&&', [where.inDeployment]);
+            }
+            if (check.nonEmptyObject(where.inDeployment)) {
+              if (check.nonEmptyArray(where.inDeployment.in)) {
+                // i.e. looking for any overlap
+                builder.where('timeseries.in_deployments', '&&', where.inDeployment.in);
+              }
+              if (check.boolean(where.inDeployment.exists)) {
+                if (where.inDeployment.exists === true) {
+                  builder.whereNotNull('timeseries.in_deployments');
+                } 
+                if (where.inDeployment.exists === false) {
+                  builder.whereNull('timeseries.in_deployments');
+                }              
+              }
+            }
           }      
-          if (check.assigned(where.resultTime.lt)) {
-            builder.where('observations.resultTime', '<', where.resultTime);
+
+          // inDeployments - for an exact match (after sorting alphabetically)
+          if (check.assigned(where.inDeployments)) {
+            if (check.nonEmptyArray(where.inDeployments)) {
+              builder.where('timeseries.in_deployments', sortBy(where.inDeployments));
+            }
+            if (check.nonEmptyObject(where.inDeployments)) {
+              // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
+              if (check.boolean(where.inDeployments.exists)) {
+                if (where.inDeployments.exists === true) {
+                  builder.whereNotNull('timeseries.in_deployments');
+                } 
+                if (where.inDeployments.exists === false) {
+                  builder.whereNull('timeseries.in_deployments');
+                }              
+              }
+            }
           }      
 
-        }
-      }
-
-      // madeBySensor
-      if (check.assigned(where.madeBySensor)) {
-        if (check.nonEmptyString(where.madeBySensor)) {
-          builder.where('timeseries.made_by_sensor', where.madeBySensor);
-        }
-        if (check.nonEmptyObject(where.madeBySensor)) {
-          if (check.nonEmptyArray(where.madeBySensor.in)) {
-            builder.whereIn('timeseries.made_by_sensor', where.madeBySensor.in);
-          }
-          if (check.boolean(where.madeBySensor.exists)) {
-            if (where.madeBySensor.exists === true) {
-              builder.whereNotNull('timeseries.made_by_sensor');
-            } 
-            if (where.madeBySensor.exists === false) {
-              builder.whereNull('timeseries.made_by_sensor');
+          // hostedByPath (used for finding exact matches)
+          if (check.assigned(where.hostedByPath)) {
+            if (check.nonEmptyArray(where.hostedByPath)) {
+              builder.where('timeseries.hosted_by_path', arrayToLtreeString(where.hostedByPath));
             }
-          }     
-        }
-      }
-
-      // inDeployment
-      if (check.assigned(where.inDeployment)) {
-        if (check.nonEmptyString(where.inDeployment)) {
-          // Find any timeseries whose in_deployments array contains this one deployment (if there are others in the array then it will still match)
-          builder.where('timeseries.in_deployments', '&&', [where.inDeployment]);
-        }
-        if (check.nonEmptyObject(where.inDeployment)) {
-          if (check.nonEmptyArray(where.inDeployment.in)) {
-            // i.e. looking for any overlap
-            builder.where('timeseries.in_deployments', '&&', where.inDeployment.in);
-          }
-          if (check.boolean(where.inDeployment.exists)) {
-            if (where.inDeployment.exists === true) {
-              builder.whereNotNull('timeseries.in_deployments');
-            } 
-            if (where.inDeployment.exists === false) {
-              builder.whereNull('timeseries.in_deployments');
-            }              
-          }
-        }
-      }      
-
-      // inDeployments - for an exact match (after sorting alphabetically)
-      if (check.assigned(where.inDeployments)) {
-        if (check.nonEmptyArray(where.inDeployments)) {
-          builder.where('timeseries.in_deployments', sortBy(where.inDeployments));
-        }
-        if (check.nonEmptyObject(where.inDeployments)) {
-          // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
-          if (check.boolean(where.inDeployments.exists)) {
-            if (where.inDeployments.exists === true) {
-              builder.whereNotNull('timeseries.in_deployments');
-            } 
-            if (where.inDeployments.exists === false) {
-              builder.whereNull('timeseries.in_deployments');
-            }              
-          }
-        }
-      }      
-
-      // hostedByPath (used for finding exact matches)
-      if (check.assigned(where.hostedByPath)) {
-        if (check.nonEmptyArray(where.hostedByPath)) {
-          builder.where('timeseries.hosted_by_path', arrayToLtreeString(where.hostedByPath));
-        }
-        if (check.nonEmptyObject(where.hostedByPath)) {
-          if (check.nonEmptyArray(where.hostedByPath.in)) {
-            const ltreeStrings = where.hostedByPath.in.map(arrayToLtreeString);
-            builder.where('timeseries.hosted_by_path', '?', ltreeStrings);
-          }
-          if (check.boolean(where.hostedByPath.exists)) {
-            if (where.hostedByPath.exists === true) {
-              builder.whereNotNull('timeseries.hosted_by_path');
-            } 
-            if (where.hostedByPath.exists === false) {
-              builder.whereNull('timeseries.hosted_by_path');
-            }              
-          }
-        }
-      }
-
-      // isHostedBy
-      if (check.assigned(where.isHostedBy)) {
-        if (check.nonEmptyString(where.isHostedBy)) {
-          builder.where('timeseries.hosted_by_path', '~', platformIdToAnywhereLquery(where.isHostedBy));
-        }
-        if (check.nonEmptyObject(where.isHostedBy)) {
-          if (check.nonEmptyArray(where.isHostedBy.in)) {
-            const ltreeStrings = where.isHostedBy.in.map(platformIdToAnywhereLquery);
-            builder.where('timeseries.hosted_by_path', '?', ltreeStrings);
-          }
-        }
-      }
-
-      // hostedByPathSpecial
-      if (check.assigned(where.hostedByPathSpecial)) {
-        if (check.nonEmptyString(where.hostedByPathSpecial)) {
-          builder.where('timeseries.hosted_by_path', '~', where.hostedByPathSpecial);
-        }
-        if (check.nonEmptyObject(where.hostedByPathSpecial)) {
-          if (check.nonEmptyArray(where.hostedByPathSpecial.in)) {
-            builder.where('timeseries.hosted_by_path', '?', where.hostedByPathSpecial.in);
-          }
-        }
-      }
-
-
-      // hasFeatureOfInterest
-      if (check.assigned(where.hasFeatureOfInterest)) {
-        if (check.nonEmptyString(where.hasFeatureOfInterest)) {
-          builder.where('timeseries.has_feature_of_interest', where.hasFeatureOfInterest);
-        }
-        if (check.nonEmptyObject(where.hasFeatureOfInterest)) {
-          if (check.nonEmptyArray(where.hasFeatureOfInterest.in)) {
-            builder.whereIn('timeseries.has_feature_of_interest', where.hasFeatureOfInterest.in);
-          }
-          if (check.boolean(where.hasFeatureOfInterest.exists)) {
-            if (where.hasFeatureOfInterest.exists === true) {
-              builder.whereNotNull('timeseries.has_feature_of_interest');
-            } 
-            if (where.hasFeatureOfInterest.exists === false) {
-              builder.whereNull('timeseries.has_feature_of_interest');
+            if (check.nonEmptyObject(where.hostedByPath)) {
+              if (check.nonEmptyArray(where.hostedByPath.in)) {
+                const ltreeStrings = where.hostedByPath.in.map(arrayToLtreeString);
+                builder.where('timeseries.hosted_by_path', '?', ltreeStrings);
+              }
+              if (check.boolean(where.hostedByPath.exists)) {
+                if (where.hostedByPath.exists === true) {
+                  builder.whereNotNull('timeseries.hosted_by_path');
+                } 
+                if (where.hostedByPath.exists === false) {
+                  builder.whereNull('timeseries.hosted_by_path');
+                }              
+              }
             }
-          }     
-        }
-      }
-
-      // observedProperty
-      if (check.assigned(where.observedProperty)) {
-        if (check.nonEmptyString(where.observedProperty)) {
-          builder.where('timeseries.observed_property', where.observedProperty);
-        }
-        if (check.nonEmptyObject(where.observedProperty)) {
-          if (check.nonEmptyArray(where.observedProperty.in)) {
-            builder.whereIn('timeseries.observed_property', where.observedProperty.in);
           }
-          if (check.boolean(where.observedProperty.exists)) {
-            if (where.observedProperty.exists === true) {
-              builder.whereNotNull('timeseries.observed_property');
-            } 
-            if (where.observedProperty.exists === false) {
-              builder.whereNull('timeseries.observed_property');
+
+          // isHostedBy
+          if (check.assigned(where.isHostedBy)) {
+            if (check.nonEmptyString(where.isHostedBy)) {
+              builder.where('timeseries.hosted_by_path', '~', platformIdToAnywhereLquery(where.isHostedBy));
             }
-          }     
-        }
-      }
-
-      // discipline
-      if (check.assigned(where.discipline)) {
-        if (check.nonEmptyString(where.discipline)) {
-          // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
-          builder.where('timeseries.discipline', '&&', [where.discipline]);
-        }
-        if (check.nonEmptyObject(where.discipline)) {
-          if (check.nonEmptyArray(where.discipline.in)) {
-            // i.e. looking for any overlap
-            builder.where('timeseries.discipline', '&&', where.discipline.in);
+            if (check.nonEmptyObject(where.isHostedBy)) {
+              if (check.nonEmptyArray(where.isHostedBy.in)) {
+                const ltreeStrings = where.isHostedBy.in.map(platformIdToAnywhereLquery);
+                builder.where('timeseries.hosted_by_path', '?', ltreeStrings);
+              }
+            }
           }
-          if (check.boolean(where.discipline.exists)) {
-            if (where.discipline.exists === true) {
-              builder.whereNotNull('timeseries.discipline');
-            } 
-            if (where.discipline.exists === false) {
-              builder.whereNull('timeseries.discipline');
-            }              
+
+          // hostedByPathSpecial
+          if (check.assigned(where.hostedByPathSpecial)) {
+            if (check.nonEmptyString(where.hostedByPathSpecial)) {
+              builder.where('timeseries.hosted_by_path', '~', where.hostedByPathSpecial);
+            }
+            if (check.nonEmptyObject(where.hostedByPathSpecial)) {
+              if (check.nonEmptyArray(where.hostedByPathSpecial.in)) {
+                builder.where('timeseries.hosted_by_path', '?', where.hostedByPathSpecial.in);
+              }
+            }
+          }
+
+
+          // hasFeatureOfInterest
+          if (check.assigned(where.hasFeatureOfInterest)) {
+            if (check.nonEmptyString(where.hasFeatureOfInterest)) {
+              builder.where('timeseries.has_feature_of_interest', where.hasFeatureOfInterest);
+            }
+            if (check.nonEmptyObject(where.hasFeatureOfInterest)) {
+              if (check.nonEmptyArray(where.hasFeatureOfInterest.in)) {
+                builder.whereIn('timeseries.has_feature_of_interest', where.hasFeatureOfInterest.in);
+              }
+              if (check.boolean(where.hasFeatureOfInterest.exists)) {
+                if (where.hasFeatureOfInterest.exists === true) {
+                  builder.whereNotNull('timeseries.has_feature_of_interest');
+                } 
+                if (where.hasFeatureOfInterest.exists === false) {
+                  builder.whereNull('timeseries.has_feature_of_interest');
+                }
+              }     
+            }
+          }
+
+          // observedProperty
+          if (check.assigned(where.observedProperty)) {
+            if (check.nonEmptyString(where.observedProperty)) {
+              builder.where('timeseries.observed_property', where.observedProperty);
+            }
+            if (check.nonEmptyObject(where.observedProperty)) {
+              if (check.nonEmptyArray(where.observedProperty.in)) {
+                builder.whereIn('timeseries.observed_property', where.observedProperty.in);
+              }
+              if (check.boolean(where.observedProperty.exists)) {
+                if (where.observedProperty.exists === true) {
+                  builder.whereNotNull('timeseries.observed_property');
+                } 
+                if (where.observedProperty.exists === false) {
+                  builder.whereNull('timeseries.observed_property');
+                }
+              }     
+            }
+          }
+
+          // discipline
+          if (check.assigned(where.discipline)) {
+            if (check.nonEmptyString(where.discipline)) {
+              // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
+              builder.where('timeseries.discipline', '&&', [where.discipline]);
+            }
+            if (check.nonEmptyObject(where.discipline)) {
+              if (check.nonEmptyArray(where.discipline.in)) {
+                // i.e. looking for any overlap
+                builder.where('timeseries.discipline', '&&', where.discipline.in);
+              }
+              if (check.boolean(where.discipline.exists)) {
+                if (where.discipline.exists === true) {
+                  builder.whereNotNull('timeseries.discipline');
+                } 
+                if (where.discipline.exists === false) {
+                  builder.whereNull('timeseries.discipline');
+                }              
+              }
+            }
+          }  
+
+          // disciplines
+          if (check.assigned(where.disciplines)) {
+            if (check.nonEmptyArray(where.disciplines)) {
+              builder.where('timeseries.discipline', where.disciplines);
+            }
+            if (check.nonEmptyObject(where.disciplines)) {
+              // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
+              if (check.boolean(where.disciplines.exists)) {
+                if (where.disciplines.exists === true) {
+                  builder.whereNotNull('timeseries.discipline');
+                } 
+                if (where.disciplines.exists === false) {
+                  builder.whereNull('timeseries.discipline');
+                }              
+              }
+            }
+          }
+
+          // usedProcedure
+          if (check.assigned(where.usedProcedure)) {
+            if (check.nonEmptyString(where.usedProcedure)) {
+              // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
+              builder.where('timeseries.discipline', '&&', [where.usedProcedure]);
+            }
+            if (check.nonEmptyObject(where.usedProcedure)) {
+              if (check.nonEmptyArray(where.usedProcedure.in)) {
+                // i.e. looking for any overlap
+                builder.where('timeseries.discipline', '&&', where.usedProcedure.in);
+              }
+              if (check.boolean(where.usedProcedure.exists)) {
+                if (where.usedProcedure.exists === true) {
+                  builder.whereNotNull('timeseries.discipline');
+                } 
+                if (where.usedProcedure.exists === false) {
+                  builder.whereNull('timeseries.discipline');
+                }              
+              }
+            }
+          }  
+
+          // usedProcedures (for an exact match)
+          if (check.assigned(where.usedProcedures)) {
+            if (check.nonEmptyArray(where.usedProcedures)) {
+              builder.where('timeseries.used_procedure', where.usedProcedures);
+            }
+            if (check.nonEmptyObject(where.usedProcedures)) {
+              // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
+              if (check.boolean(where.usedProcedures.exists)) {
+                if (where.usedProcedures.exists === true) {
+                  builder.whereNotNull('timeseries.used_procedure');
+                } 
+                if (where.usedProcedures.exists === false) {
+                  builder.whereNull('timeseries.used_procedure');
+                }              
+              }
+            }
+          }          
+
+
+        })
+        .as(selectedTimeseriesAlias);
+      })
+      .joinRaw(`
+        INNER JOIN LATERAL (
+          SELECT *
+          FROM observations
+          LEFT JOIN (
+            SELECT 
+              id AS loc_id, 
+              client_id AS location_client_id,
+              geojson AS location_geojson,
+              valid_at AS location_valid_at 
+            FROM locations
+          ) locs
+          ON observations.location = locs.loc_id
+          WHERE observations.timeseries = ${selectedTimeseriesAlias}.id
+          ${extraClauses}
+          ORDER BY result_time DESC LIMIT 1
+        ) AS ${lateralDataAlias}
+        ON TRUE
+      `)
+      .orderBy(`${selectedTimeseriesAlias}.${distinctByColumn}`, 'asc')
+      .limit(options.limit || 100000)
+      .offset(options.offset || 0);
+
+    }
+
+    //------------------------
+    // Normal requests
+    //------------------------
+    if (!onePerEnabled) {
+
+      observations = await knex('observations')
+      .select(columnsToSelectDuringJoin)
+      .leftJoin('timeseries', 'observations.timeseries', 'timeseries.id')
+      .leftJoin('locations', 'observations.location', 'locations.id')
+      .where((builder) => {
+
+        // resultTime
+        if (check.assigned(where.resultTime)) {
+          if (check.nonEmptyString(where.resultTime) || check.date(where.resultTime)) {
+            // This is in case I allow clients to request observations at an exact resultTime  
+            builder.where('observations.result_time', where.resultTime);
+          }
+          if (check.nonEmptyObject(where.resultTime)) {
+            if (check.assigned(where.resultTime.gte)) {
+              builder.where('observations.result_time', '>=', where.resultTime.gte);
+            }
+            if (check.assigned(where.resultTime.gt)) {
+              builder.where('observations.result_time', '>', where.resultTime.gt);
+            }
+            if (check.assigned(where.resultTime.lte)) {
+              builder.where('observations.result_time', '<=', where.resultTime.lte);
+            }      
+            if (check.assigned(where.resultTime.lt)) {
+              builder.where('observations.result_time', '<', where.resultTime.lt);
+            }      
+
           }
         }
-      }  
 
-      // disciplines
-      if (check.assigned(where.disciplines)) {
-        if (check.nonEmptyArray(where.disciplines)) {
-          builder.where('timeseries.discipline', where.disciplines);
-        }
-        if (check.nonEmptyObject(where.disciplines)) {
-          // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
-          if (check.boolean(where.disciplines.exists)) {
-            if (where.disciplines.exists === true) {
-              builder.whereNotNull('timeseries.discipline');
-            } 
-            if (where.disciplines.exists === false) {
-              builder.whereNull('timeseries.discipline');
-            }              
+        // madeBySensor
+        if (check.assigned(where.madeBySensor)) {
+          if (check.nonEmptyString(where.madeBySensor)) {
+            builder.where('timeseries.made_by_sensor', where.madeBySensor);
+          }
+          if (check.nonEmptyObject(where.madeBySensor)) {
+            if (check.nonEmptyArray(where.madeBySensor.in)) {
+              builder.whereIn('timeseries.made_by_sensor', where.madeBySensor.in);
+            }
+            if (check.boolean(where.madeBySensor.exists)) {
+              if (where.madeBySensor.exists === true) {
+                builder.whereNotNull('timeseries.made_by_sensor');
+              } 
+              if (where.madeBySensor.exists === false) {
+                builder.whereNull('timeseries.made_by_sensor');
+              }
+            }     
           }
         }
-      }
 
-      // usedProcedure
-      if (check.assigned(where.usedProcedure)) {
-        if (check.nonEmptyString(where.usedProcedure)) {
-          // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
-          builder.where('timeseries.discipline', '&&', [where.usedProcedure]);
-        }
-        if (check.nonEmptyObject(where.usedProcedure)) {
-          if (check.nonEmptyArray(where.usedProcedure.in)) {
-            // i.e. looking for any overlap
-            builder.where('timeseries.discipline', '&&', where.usedProcedure.in);
+        // inDeployment
+        if (check.assigned(where.inDeployment)) {
+          if (check.nonEmptyString(where.inDeployment)) {
+            // Find any timeseries whose in_deployments array contains this one deployment (if there are others in the array then it will still match)
+            builder.where('timeseries.in_deployments', '&&', [where.inDeployment]);
           }
-          if (check.boolean(where.usedProcedure.exists)) {
-            if (where.usedProcedure.exists === true) {
-              builder.whereNotNull('timeseries.discipline');
-            } 
-            if (where.usedProcedure.exists === false) {
-              builder.whereNull('timeseries.discipline');
-            }              
+          if (check.nonEmptyObject(where.inDeployment)) {
+            if (check.nonEmptyArray(where.inDeployment.in)) {
+              // i.e. looking for any overlap
+              builder.where('timeseries.in_deployments', '&&', where.inDeployment.in);
+            }
+            if (check.boolean(where.inDeployment.exists)) {
+              if (where.inDeployment.exists === true) {
+                builder.whereNotNull('timeseries.in_deployments');
+              } 
+              if (where.inDeployment.exists === false) {
+                builder.whereNull('timeseries.in_deployments');
+              }              
+            }
+          }
+        }      
+
+        // inDeployments - for an exact match (after sorting alphabetically)
+        if (check.assigned(where.inDeployments)) {
+          if (check.nonEmptyArray(where.inDeployments)) {
+            builder.where('timeseries.in_deployments', sortBy(where.inDeployments));
+          }
+          if (check.nonEmptyObject(where.inDeployments)) {
+            // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
+            if (check.boolean(where.inDeployments.exists)) {
+              if (where.inDeployments.exists === true) {
+                builder.whereNotNull('timeseries.in_deployments');
+              } 
+              if (where.inDeployments.exists === false) {
+                builder.whereNull('timeseries.in_deployments');
+              }              
+            }
+          }
+        }      
+
+        // hostedByPath (used for finding exact matches)
+        if (check.assigned(where.hostedByPath)) {
+          if (check.nonEmptyArray(where.hostedByPath)) {
+            builder.where('timeseries.hosted_by_path', arrayToLtreeString(where.hostedByPath));
+          }
+          if (check.nonEmptyObject(where.hostedByPath)) {
+            if (check.nonEmptyArray(where.hostedByPath.in)) {
+              const ltreeStrings = where.hostedByPath.in.map(arrayToLtreeString);
+              builder.where('timeseries.hosted_by_path', '?', ltreeStrings);
+            }
+            if (check.boolean(where.hostedByPath.exists)) {
+              if (where.hostedByPath.exists === true) {
+                builder.whereNotNull('timeseries.hosted_by_path');
+              } 
+              if (where.hostedByPath.exists === false) {
+                builder.whereNull('timeseries.hosted_by_path');
+              }              
+            }
           }
         }
-      }  
 
-      // usedProcedures (for an exact match)
-      if (check.assigned(where.usedProcedures)) {
-        if (check.nonEmptyArray(where.usedProcedures)) {
-          builder.where('timeseries.used_procedure', where.usedProcedures);
-        }
-        if (check.nonEmptyObject(where.usedProcedures)) {
-          // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
-          if (check.boolean(where.usedProcedures.exists)) {
-            if (where.usedProcedures.exists === true) {
-              builder.whereNotNull('timeseries.used_procedure');
-            } 
-            if (where.usedProcedures.exists === false) {
-              builder.whereNull('timeseries.used_procedure');
-            }              
+        // isHostedBy
+        if (check.assigned(where.isHostedBy)) {
+          if (check.nonEmptyString(where.isHostedBy)) {
+            builder.where('timeseries.hosted_by_path', '~', platformIdToAnywhereLquery(where.isHostedBy));
+          }
+          if (check.nonEmptyObject(where.isHostedBy)) {
+            if (check.nonEmptyArray(where.isHostedBy.in)) {
+              const ltreeStrings = where.isHostedBy.in.map(platformIdToAnywhereLquery);
+              builder.where('timeseries.hosted_by_path', '?', ltreeStrings);
+            }
           }
         }
-      }
 
-      // TODO: add spatial queries
-      // TODO: filter by flags
-      // Allow =, >=, <, etc on the numeric values.
+        // hostedByPathSpecial
+        if (check.assigned(where.hostedByPathSpecial)) {
+          if (check.nonEmptyString(where.hostedByPathSpecial)) {
+            builder.where('timeseries.hosted_by_path', '~', where.hostedByPathSpecial);
+          }
+          if (check.nonEmptyObject(where.hostedByPathSpecial)) {
+            if (check.nonEmptyArray(where.hostedByPathSpecial.in)) {
+              builder.where('timeseries.hosted_by_path', '?', where.hostedByPathSpecial.in);
+            }
+          }
+        }
 
-    })
-    .limit(options.limit || 100000)
-    .offset(options.offset || 0);
+
+        // hasFeatureOfInterest
+        if (check.assigned(where.hasFeatureOfInterest)) {
+          if (check.nonEmptyString(where.hasFeatureOfInterest)) {
+            builder.where('timeseries.has_feature_of_interest', where.hasFeatureOfInterest);
+          }
+          if (check.nonEmptyObject(where.hasFeatureOfInterest)) {
+            if (check.nonEmptyArray(where.hasFeatureOfInterest.in)) {
+              builder.whereIn('timeseries.has_feature_of_interest', where.hasFeatureOfInterest.in);
+            }
+            if (check.boolean(where.hasFeatureOfInterest.exists)) {
+              if (where.hasFeatureOfInterest.exists === true) {
+                builder.whereNotNull('timeseries.has_feature_of_interest');
+              } 
+              if (where.hasFeatureOfInterest.exists === false) {
+                builder.whereNull('timeseries.has_feature_of_interest');
+              }
+            }     
+          }
+        }
+
+        // observedProperty
+        if (check.assigned(where.observedProperty)) {
+          if (check.nonEmptyString(where.observedProperty)) {
+            builder.where('timeseries.observed_property', where.observedProperty);
+          }
+          if (check.nonEmptyObject(where.observedProperty)) {
+            if (check.nonEmptyArray(where.observedProperty.in)) {
+              builder.whereIn('timeseries.observed_property', where.observedProperty.in);
+            }
+            if (check.boolean(where.observedProperty.exists)) {
+              if (where.observedProperty.exists === true) {
+                builder.whereNotNull('timeseries.observed_property');
+              } 
+              if (where.observedProperty.exists === false) {
+                builder.whereNull('timeseries.observed_property');
+              }
+            }     
+          }
+        }
+
+        // discipline
+        if (check.assigned(where.discipline)) {
+          if (check.nonEmptyString(where.discipline)) {
+            // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
+            builder.where('timeseries.discipline', '&&', [where.discipline]);
+          }
+          if (check.nonEmptyObject(where.discipline)) {
+            if (check.nonEmptyArray(where.discipline.in)) {
+              // i.e. looking for any overlap
+              builder.where('timeseries.discipline', '&&', where.discipline.in);
+            }
+            if (check.boolean(where.discipline.exists)) {
+              if (where.discipline.exists === true) {
+                builder.whereNotNull('timeseries.discipline');
+              } 
+              if (where.discipline.exists === false) {
+                builder.whereNull('timeseries.discipline');
+              }              
+            }
+          }
+        }  
+
+        // disciplines
+        if (check.assigned(where.disciplines)) {
+          if (check.nonEmptyArray(where.disciplines)) {
+            builder.where('timeseries.discipline', where.disciplines);
+          }
+          if (check.nonEmptyObject(where.disciplines)) {
+            // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
+            if (check.boolean(where.disciplines.exists)) {
+              if (where.disciplines.exists === true) {
+                builder.whereNotNull('timeseries.discipline');
+              } 
+              if (where.disciplines.exists === false) {
+                builder.whereNull('timeseries.discipline');
+              }              
+            }
+          }
+        }
+
+        // usedProcedure
+        if (check.assigned(where.usedProcedure)) {
+          if (check.nonEmptyString(where.usedProcedure)) {
+            // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
+            builder.where('timeseries.discipline', '&&', [where.usedProcedure]);
+          }
+          if (check.nonEmptyObject(where.usedProcedure)) {
+            if (check.nonEmptyArray(where.usedProcedure.in)) {
+              // i.e. looking for any overlap
+              builder.where('timeseries.discipline', '&&', where.usedProcedure.in);
+            }
+            if (check.boolean(where.usedProcedure.exists)) {
+              if (where.usedProcedure.exists === true) {
+                builder.whereNotNull('timeseries.discipline');
+              } 
+              if (where.usedProcedure.exists === false) {
+                builder.whereNull('timeseries.discipline');
+              }              
+            }
+          }
+        }  
+
+        // usedProcedures (for an exact match)
+        if (check.assigned(where.usedProcedures)) {
+          if (check.nonEmptyArray(where.usedProcedures)) {
+            builder.where('timeseries.used_procedure', where.usedProcedures);
+          }
+          if (check.nonEmptyObject(where.usedProcedures)) {
+            // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
+            if (check.boolean(where.usedProcedures.exists)) {
+              if (where.usedProcedures.exists === true) {
+                builder.whereNotNull('timeseries.used_procedure');
+              } 
+              if (where.usedProcedures.exists === false) {
+                builder.whereNull('timeseries.used_procedure');
+              }              
+            }
+          }
+        }
+
+        // Flags
+        if (check.assigned(where.flags)) {
+          if (check.nonEmptyObject(where.flags)) {
+            if (check.boolean(where.flags.exists)) {
+              if (where.flags.exists === true) {
+                builder.whereNotNull('observations.flags');
+              } 
+              if (where.flags.exists === false) {
+                builder.whereNull('observations.flags');
+              } 
+            }
+          }
+        }
+
+        // TODO: add spatial queries
+        // Allow =, >=, <, etc on the numeric values.
+
+      })
+      .limit(options.limit || 100000)
+      .offset(options.offset || 0);
+
+    }
+
   } catch (err) {
     throw new GetObservationsFail(undefined, err.message);
   }
 
   return observations.map(observationDbToApp);
 
+}
+
+
+export function buildExtraOnPerClauses(where): string {
+
+  let sql = '';
+
+  if (check.assigned(where.resultTime)) {
+    if (check.nonEmptyString(where.resultTime)) {
+      // This is in case I allow clients to request observations at an exact resultTime 
+      sql += ` AND observations.result_time = ${where.resultTime}`;
+    }
+    if (check.nonEmptyObject(where.resultTime)) {
+      if (check.assigned(where.resultTime.gte)) {
+        sql += `AND observations.result_time >= ${where.resultTime.gte}`;
+      }
+      if (check.assigned(where.resultTime.gt)) {
+        sql += `AND observations.result_time > ${where.resultTime.gt}`;
+      }
+      if (check.assigned(where.resultTime.lte)) {
+        sql += `AND observations.result_time <= ${where.resultTime.lte}`;
+      }      
+      if (check.assigned(where.resultTime.lt)) {
+        sql += `AND observations.result_time < ${where.resultTime.lt}`;
+      }      
+
+    }
+  }
+
+  if (check.assigned(where.flags)) {
+    if (check.nonEmptyObject(where.flags)) {
+      if (check.boolean(where.flags.exists)) {
+        if (where.flags.exists === true) {
+          sql += ` AND observations.flags IS NOT NULL`;
+        }
+        if (where.flags.exists === false) {
+          sql += ` AND observations.flags IS NULL`;
+        }
+      }
+    }
+  }
+  // N.B. if you add the ability to filter by specific flags, then you might want do a regex check on the flags to watch for any SQL injection.
+
+  // N.B. when it comes to doing any geospatial queries the locations table may have a different alias, e.g. 'locs'.
+
+  return sql;
 }
 
 
