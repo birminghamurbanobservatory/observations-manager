@@ -26,6 +26,7 @@ const createObservationSchema = joi.object({
   madeBySensor: joi.string().required(),
   hasResult: joi.object({
     value: joi.any().required(),
+    unit: joi.string(), 
     flags: joi.array().min(1).items(joi.string())
   }).required(),
   resultTime: joi.string().isoDate().required(),
@@ -37,7 +38,6 @@ const createObservationSchema = joi.object({
   hostedByPath: joi.array().min(1).items(joi.string()),
   hasFeatureOfInterest: joi.string(),
   observedProperty: joi.string(), // TODO: Add a PascalCase regex?
-  unit: joi.string(),
   disciplines: joi.array().min(1).items(joi.string()),
   usedProcedures: joi.array().min(1).items(joi.string()),
   location: joi.object({

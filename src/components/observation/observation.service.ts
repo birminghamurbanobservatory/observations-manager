@@ -866,16 +866,21 @@ export function extractCoreFromObservation(observation: ObservationApp): Observa
 
 export function extractTimeseriesPropsFromObservation(observation: ObservationApp): TimeseriesProps {
 
-  const props = pick(observation, [
+  const props: any = pick(observation, [
     'madeBySensor',
     'inDeployments',
     'hostedByPath',
     'observedProperty',
-    'unit',
     'hasFeatureOfInterest',
     'disciplines',
     'usedProcedures'
   ]);
+
+  // unit is a special case because it's inside the hasResult object
+  const unit = observation.hasResult.unit;
+  if (unit) {
+    props.unit = unit;
+  }
 
   return props;
 }
@@ -1053,6 +1058,11 @@ export function observationDbToApp(observationDb): ObservationApp {
     observationApp.hasResult.flags = observationApp.flags;
   }
   delete observationApp.flags;
+
+  if (observationApp.unit) {
+    observationApp.hasResult.unit = observationApp.unit;
+  }
+  delete observationApp.unit;
 
   if (observationApp.hostedByPath) {
     observationApp.hostedByPath = ltreeStringToArray(observationApp.hostedByPath);

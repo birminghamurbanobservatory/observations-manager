@@ -12,7 +12,6 @@ export class ObservationApp {
   public hostedByPath?: string[];
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;
-  public unit?: string;
   public disciplines?: string[];
   public usedProcedures?: string[];
   public location?: LocationApp;
@@ -20,6 +19,7 @@ export class ObservationApp {
 
 class Result {
   public value: any;
+  public unit?: string;
   public flags?: string[];
 }
 

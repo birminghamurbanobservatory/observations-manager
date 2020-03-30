@@ -28,14 +28,14 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
     const observation = {
       madeBySensor: 'sensor-123',
       hasResult: {
-        value: '12'
+        value: '12',
+        unit: 'DegreeCelsius'
       },
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature',
-      unit: 'DegreeCelsius', 
       disciplines: ['Meteorology'],
       usedProcedures: ['PointSample']
     };

@@ -10,7 +10,6 @@ export class ObservationClient {
   public hostedByPath?: string[];
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;
-  public unit?: string;
   public disciplines?: string[];
   public usedProcedures?: string[];
   public location?: LocationClient
@@ -18,6 +17,7 @@ export class ObservationClient {
 
 class Result {
   value: any;
+  unit?: string;
   flags?: string[];
 }
 
