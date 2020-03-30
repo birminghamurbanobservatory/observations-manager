@@ -26,9 +26,9 @@ export async function createTimeseriesTable(): Promise<void> {
     table.string('made_by_sensor').notNullable();
     table.specificType('in_deployments', 'TEXT[]');
     table.specificType('hosted_by_path', 'ltree');
+    table.string('observed_property');
     table.string('unit');
     table.string('has_feature_of_interest');
-    table.string('observed_property');
     table.specificType('disciplines', 'TEXT[]');
     table.specificType('used_procedures', 'TEXT[]');
 
