@@ -12,9 +12,10 @@ describe('Testing of convertPropsToExactWhere function', () => {
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
       observedProperty: 'AirTemperature',
+      unit: 'DegreeCelsius',
       hasFeatureOfInterest: 'EarthAtmosphere',
-      discipline: ['Meterology'],
-      usedProcedure: ['point-sample']
+      disciplines: ['Meterology'],
+      usedProcedures: ['point-sample']
     };
 
     const expected = {
@@ -22,9 +23,10 @@ describe('Testing of convertPropsToExactWhere function', () => {
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
       observedProperty: 'AirTemperature',
+      unit: 'DegreeCelsius',
       hasFeatureOfInterest: 'EarthAtmosphere',
-      discipline: ['Meterology'],
-      usedProcedure: ['point-sample']      
+      disciplines: ['Meterology'],
+      usedProcedures: ['point-sample']      
     };
 
     expect(convertPropsToExactWhere(props)).toEqual(expected);
@@ -45,9 +47,10 @@ describe('Testing of convertPropsToExactWhere function', () => {
       inDeployments: ['deployment-1'],
       hostedByPath: {exists: false},
       observedProperty: 'AirTemperature',
+      unit: {exists: false},
       hasFeatureOfInterest: 'EarthAtmosphere',
-      discipline: {exists: false},
-      usedProcedure: {exists: false}     
+      disciplines: {exists: false},
+      usedProcedures: {exists: false}     
     };
 
     expect(convertPropsToExactWhere(props)).toEqual(expected);
@@ -63,9 +66,10 @@ describe('Testing of convertPropsToExactWhere function', () => {
       inDeployments: ['deployment-b', 'deployment-c', 'deployment-a'],
       hostedByPath: ['lamppost-12', 'beta-weather-station'],
       observedProperty: 'AirTemperature',
+      unit: 'DegreeCelsius',
       hasFeatureOfInterest: 'EarthAtmosphere',
-      discipline: ['Meteorology', 'Climatology'],
-      usedProcedure: ['point-sample', 'averaged']     
+      disciplines: ['Meteorology', 'Climatology'],
+      usedProcedures: ['point-sample', 'averaged']     
     };
 
     const expected = {
@@ -73,9 +77,10 @@ describe('Testing of convertPropsToExactWhere function', () => {
       inDeployments: ['deployment-a', 'deployment-b', 'deployment-c'], // do want this re-ordered
       hostedByPath: ['lamppost-12', 'beta-weather-station'], // don't want this re-ordered, as the order means something
       observedProperty: 'AirTemperature',
+      unit: 'DegreeCelsius',
       hasFeatureOfInterest: 'EarthAtmosphere',
-      discipline: ['Climatology', 'Meteorology'], // do want this reordered.
-      usedProcedure: ['point-sample', 'averaged']  // don't want this re-ordered, as the order means something
+      disciplines: ['Climatology', 'Meteorology'], // do want this reordered.
+      usedProcedures: ['point-sample', 'averaged']  // don't want this re-ordered, as the order means something
     };
 
     expect(convertPropsToExactWhere(props)).toEqual(expected);
@@ -98,8 +103,8 @@ describe('Testing of convertPropsToExactWhere function', () => {
         hasFeatureOfInterest: 'buildings',
         observedProperty: 'AirTemperature',
         unit: 'DegreeCelsius',
-        discipline: ['Meteorology'],
-        usedProcedure: ['point-sample']        
+        disciplines: ['Meteorology'],
+        usedProcedures: ['point-sample']        
       };
       const expected: TimeseriesDb = {
         first_obs: new Date('2020-01-17T10:33:21.620Z'),

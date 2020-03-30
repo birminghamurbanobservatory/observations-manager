@@ -871,7 +871,7 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
     'inDeployments',
     'hostedByPath',
     'observedProperty',
-    'units',
+    'unit',
     'hasFeatureOfInterest',
     'disciplines',
     'usedProcedures'
