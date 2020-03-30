@@ -36,9 +36,10 @@ const createObservationSchema = joi.object({
   inDeployments: joi.array().min(1).items(joi.string()),
   hostedByPath: joi.array().min(1).items(joi.string()),
   hasFeatureOfInterest: joi.string(),
-  observedProperty: joi.string(),
-  discipline: joi.array().min(1).items(joi.string()),
-  usedProcedure: joi.array().min(1).items(joi.string()),
+  observedProperty: joi.string(), // TODO: Add a PascalCase regex?
+  unit: joi.string(),
+  disciplines: joi.array().min(1).items(joi.string()),
+  usedProcedures: joi.array().min(1).items(joi.string()),
   location: joi.object({
     id: joi.string().guid(), // this is the client_id, a uuid,
     validAt: joi.string().isoDate(),
@@ -243,6 +244,13 @@ const getObservationsWhereSchema = joi.object({
     })
   ),  
   observedProperty: joi.alternatives().try(
+    joi.string(),
+    joi.object({
+      in: joi.array().items(joi.string()).min(1),
+      exists: joi.boolean()
+    }).min(1)
+  ),
+  unit: joi.alternatives().try(
     joi.string(),
     joi.object({
       in: joi.array().items(joi.string()).min(1),

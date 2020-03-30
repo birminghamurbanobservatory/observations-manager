@@ -12,13 +12,13 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature',
-      discipline: ['Meteorology']
+      disciplines: ['Meteorology']
     };
     const expected = {
       madeBySensor: 'sensor-123',
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature',
-      discipline: ['Meteorology']     
+      disciplines: ['Meteorology']     
     };
     expect(extractTimeseriesPropsFromObservation(observation)).toEqual(expected);
   });
@@ -34,9 +34,10 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
       inDeployments: ['deployment-1'],
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'AirTemperature', 
-      discipline: ['Meteorology'],
-      usedProcedure: ['PointSample']
+      observedProperty: 'AirTemperature',
+      unit: 'DegreeCelsius', 
+      disciplines: ['Meteorology'],
+      usedProcedures: ['PointSample']
     };
     const expected = {
       madeBySensor: 'sensor-123',
@@ -44,8 +45,9 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
-      discipline: ['Meteorology'],
-      usedProcedure: ['PointSample']      
+      unit: 'DegreeCelsius',
+      disciplines: ['Meteorology'],
+      usedProcedures: ['PointSample']      
     };
     expect(extractTimeseriesPropsFromObservation(observation)).toEqual(expected);
   });
@@ -120,7 +122,7 @@ describe('observationClientToApp function tests', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
-      usedProcedure: ['PointSample']
+      usedProcedures: ['PointSample']
     };
 
     const expected = {
@@ -133,7 +135,7 @@ describe('observationClientToApp function tests', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
-      usedProcedure: ['PointSample']
+      usedProcedures: ['PointSample']
     };
 
     const observationApp = observationClientToApp(observationClient);
@@ -200,7 +202,7 @@ describe('observationAppToClient function tests', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
-      usedProcedure: ['PointSample']
+      usedProcedures: ['PointSample']
     };
 
     const expected = {
@@ -214,7 +216,7 @@ describe('observationAppToClient function tests', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
-      usedProcedure: ['PointSample']
+      usedProcedures: ['PointSample']
     };
 
     const observationClient = observationAppToClient(observationApp);
@@ -289,7 +291,7 @@ describe('observationDbToApp function tests', () => {
       hosted_by_path: 'bob-back-garden.platform-1',
       has_feature_of_interest: 'EarthAtmosphere',
       observed_property: 'precipitation-depth',
-      used_procedure: ['tip-sum'],
+      used_procedures: ['tip-sum'],
       location_client_id: '146380a6-0614-48ce-a0ae-a1bf935f015c',
       location_geojson: {type: 'Point', coordinates: [-1.9, 52.9]},
       location_valid_at: '2019-07-05T12:43:24.621Z' 
@@ -311,7 +313,7 @@ describe('observationDbToApp function tests', () => {
       hostedByPath: ['bob-back-garden', 'platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth',
-      usedProcedure: ['tip-sum'],
+      usedProcedures: ['tip-sum'],
       timeseriesId: 54,
       location: {
         id: 33,

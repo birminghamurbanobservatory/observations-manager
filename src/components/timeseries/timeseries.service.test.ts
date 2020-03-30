@@ -97,6 +97,7 @@ describe('Testing of convertPropsToExactWhere function', () => {
         hostedByPath: ['building-1', 'room-no-3', 'device'],
         hasFeatureOfInterest: 'buildings',
         observedProperty: 'AirTemperature',
+        unit: 'DegreeCelsius',
         discipline: ['Meteorology'],
         usedProcedure: ['point-sample']        
       };
@@ -108,8 +109,9 @@ describe('Testing of convertPropsToExactWhere function', () => {
         hosted_by_path: 'building_1.room_no_3.device',
         has_feature_of_interest: 'buildings',
         observed_property: 'AirTemperature',
-        discipline: ['Meteorology'],
-        used_procedure: ['point-sample']
+        unit: 'DegreeCelsius',
+        disciplines: ['Meteorology'],
+        used_procedures: ['point-sample']
       };
       const timeseriesDb = timeseriesAppToDb(timeseriesApp);
       expect(timeseriesDb).toEqual(expected);

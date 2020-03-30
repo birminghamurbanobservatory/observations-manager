@@ -8,6 +8,7 @@ export class ObservationsWhere {
   public hostedByPathSpecial?: any; // allows lquery syntax
   public hasFeatureOfInterest?: any;
   public observedProperty?: any;
+  public unit: any;
   public discipline?: any;
   public disciplines?: any;
   public usedProcedure?: any;

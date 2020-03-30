@@ -102,8 +102,9 @@ const columnsToSelectDuringJoin = [
   'timeseries.hosted_by_path',
   'timeseries.has_feature_of_interest',
   'timeseries.observed_property',
-  'timeseries.discipline',
-  'timeseries.used_procedure',
+  'timeseries.unit',
+  'timeseries.disciplines',
+  'timeseries.used_procedures',
   'locations.client_id as location_client_id',
   'locations.geojson as location_geojson',
   'locations.valid_at as location_valid_at'    
@@ -193,8 +194,9 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         `${selectedTimeseriesAlias}.hosted_by_path`,
         `${selectedTimeseriesAlias}.has_feature_of_interest`,
         `${selectedTimeseriesAlias}.observed_property`,
-        `${selectedTimeseriesAlias}.discipline`,
-        `${selectedTimeseriesAlias}.used_procedure`,
+        `${selectedTimeseriesAlias}.unit`,
+        `${selectedTimeseriesAlias}.disciplines`,
+        `${selectedTimeseriesAlias}.used_procedures`,
         `${lateralDataAlias}.location_client_id`,
         `${lateralDataAlias}.location_geojson`,
         `${lateralDataAlias}.location_valid_at` 
@@ -352,23 +354,43 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
             }
           }
 
+          // unit
+          if (check.assigned(where.unit)) {
+            if (check.nonEmptyString(where.unit)) {
+              builder.where('timeseries.unit', where.unit);
+            }
+            if (check.nonEmptyObject(where.unit)) {
+              if (check.nonEmptyArray(where.unit.in)) {
+                builder.whereIn('timeseries.unit', where.unit.in);
+              }
+              if (check.boolean(where.unit.exists)) {
+                if (where.unit.exists === true) {
+                  builder.whereNotNull('timeseries.unit');
+                } 
+                if (where.unit.exists === false) {
+                  builder.whereNull('timeseries.unit');
+                }
+              }     
+            }
+          }
+
           // discipline
           if (check.assigned(where.discipline)) {
             if (check.nonEmptyString(where.discipline)) {
               // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
-              builder.where('timeseries.discipline', '&&', [where.discipline]);
+              builder.where('timeseries.disciplines', '&&', [where.discipline]);
             }
             if (check.nonEmptyObject(where.discipline)) {
               if (check.nonEmptyArray(where.discipline.in)) {
                 // i.e. looking for any overlap
-                builder.where('timeseries.discipline', '&&', where.discipline.in);
+                builder.where('timeseries.disciplines', '&&', where.discipline.in);
               }
               if (check.boolean(where.discipline.exists)) {
                 if (where.discipline.exists === true) {
-                  builder.whereNotNull('timeseries.discipline');
+                  builder.whereNotNull('timeseries.disciplines');
                 } 
                 if (where.discipline.exists === false) {
-                  builder.whereNull('timeseries.discipline');
+                  builder.whereNull('timeseries.disciplines');
                 }              
               }
             }
@@ -377,16 +399,16 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
           // disciplines
           if (check.assigned(where.disciplines)) {
             if (check.nonEmptyArray(where.disciplines)) {
-              builder.where('timeseries.discipline', where.disciplines);
+              builder.where('timeseries.disciplines', where.disciplines);
             }
             if (check.nonEmptyObject(where.disciplines)) {
               // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
               if (check.boolean(where.disciplines.exists)) {
                 if (where.disciplines.exists === true) {
-                  builder.whereNotNull('timeseries.discipline');
+                  builder.whereNotNull('timeseries.disciplines');
                 } 
                 if (where.disciplines.exists === false) {
-                  builder.whereNull('timeseries.discipline');
+                  builder.whereNull('timeseries.disciplines');
                 }              
               }
             }
@@ -396,19 +418,19 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
           if (check.assigned(where.usedProcedure)) {
             if (check.nonEmptyString(where.usedProcedure)) {
               // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
-              builder.where('timeseries.discipline', '&&', [where.usedProcedure]);
+              builder.where('timeseries.used_procedures', '&&', [where.usedProcedure]);
             }
             if (check.nonEmptyObject(where.usedProcedure)) {
               if (check.nonEmptyArray(where.usedProcedure.in)) {
                 // i.e. looking for any overlap
-                builder.where('timeseries.discipline', '&&', where.usedProcedure.in);
+                builder.where('timeseries.used_procedures', '&&', where.usedProcedure.in);
               }
               if (check.boolean(where.usedProcedure.exists)) {
                 if (where.usedProcedure.exists === true) {
-                  builder.whereNotNull('timeseries.discipline');
+                  builder.whereNotNull('timeseries.used_procedures');
                 } 
                 if (where.usedProcedure.exists === false) {
-                  builder.whereNull('timeseries.discipline');
+                  builder.whereNull('timeseries.used_procedures');
                 }              
               }
             }
@@ -417,16 +439,16 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
           // usedProcedures (for an exact match)
           if (check.assigned(where.usedProcedures)) {
             if (check.nonEmptyArray(where.usedProcedures)) {
-              builder.where('timeseries.used_procedure', where.usedProcedures);
+              builder.where('timeseries.used_procedures', where.usedProcedures);
             }
             if (check.nonEmptyObject(where.usedProcedures)) {
               // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
               if (check.boolean(where.usedProcedures.exists)) {
                 if (where.usedProcedures.exists === true) {
-                  builder.whereNotNull('timeseries.used_procedure');
+                  builder.whereNotNull('timeseries.used_procedures');
                 } 
                 if (where.usedProcedures.exists === false) {
-                  builder.whereNull('timeseries.used_procedure');
+                  builder.whereNull('timeseries.used_procedures');
                 }              
               }
             }
@@ -642,23 +664,43 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
           }
         }
 
+        // unit
+        if (check.assigned(where.unit)) {
+          if (check.nonEmptyString(where.unit)) {
+            builder.where('timeseries.unit', where.unit);
+          }
+          if (check.nonEmptyObject(where.unit)) {
+            if (check.nonEmptyArray(where.unit.in)) {
+              builder.whereIn('timeseries.unit', where.unit.in);
+            }
+            if (check.boolean(where.unit.exists)) {
+              if (where.unit.exists === true) {
+                builder.whereNotNull('timeseries.unit');
+              } 
+              if (where.unit.exists === false) {
+                builder.whereNull('timeseries.unit');
+              }
+            }     
+          }
+        }
+
         // discipline
         if (check.assigned(where.discipline)) {
           if (check.nonEmptyString(where.discipline)) {
             // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
-            builder.where('timeseries.discipline', '&&', [where.discipline]);
+            builder.where('timeseries.disciplines', '&&', [where.discipline]);
           }
           if (check.nonEmptyObject(where.discipline)) {
             if (check.nonEmptyArray(where.discipline.in)) {
               // i.e. looking for any overlap
-              builder.where('timeseries.discipline', '&&', where.discipline.in);
+              builder.where('timeseries.disciplines', '&&', where.discipline.in);
             }
             if (check.boolean(where.discipline.exists)) {
               if (where.discipline.exists === true) {
-                builder.whereNotNull('timeseries.discipline');
+                builder.whereNotNull('timeseries.disciplines');
               } 
               if (where.discipline.exists === false) {
-                builder.whereNull('timeseries.discipline');
+                builder.whereNull('timeseries.disciplines');
               }              
             }
           }
@@ -667,16 +709,16 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         // disciplines
         if (check.assigned(where.disciplines)) {
           if (check.nonEmptyArray(where.disciplines)) {
-            builder.where('timeseries.discipline', where.disciplines);
+            builder.where('timeseries.disciplines', where.disciplines);
           }
           if (check.nonEmptyObject(where.disciplines)) {
             // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
             if (check.boolean(where.disciplines.exists)) {
               if (where.disciplines.exists === true) {
-                builder.whereNotNull('timeseries.discipline');
+                builder.whereNotNull('timeseries.disciplines');
               } 
               if (where.disciplines.exists === false) {
-                builder.whereNull('timeseries.discipline');
+                builder.whereNull('timeseries.disciplines');
               }              
             }
           }
@@ -686,19 +728,19 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         if (check.assigned(where.usedProcedure)) {
           if (check.nonEmptyString(where.usedProcedure)) {
             // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
-            builder.where('timeseries.discipline', '&&', [where.usedProcedure]);
+            builder.where('timeseries.used_procedures', '&&', [where.usedProcedure]);
           }
           if (check.nonEmptyObject(where.usedProcedure)) {
             if (check.nonEmptyArray(where.usedProcedure.in)) {
               // i.e. looking for any overlap
-              builder.where('timeseries.discipline', '&&', where.usedProcedure.in);
+              builder.where('timeseries.used_procedures', '&&', where.usedProcedure.in);
             }
             if (check.boolean(where.usedProcedure.exists)) {
               if (where.usedProcedure.exists === true) {
-                builder.whereNotNull('timeseries.discipline');
+                builder.whereNotNull('timeseries.used_procedures');
               } 
               if (where.usedProcedure.exists === false) {
-                builder.whereNull('timeseries.discipline');
+                builder.whereNull('timeseries.used_procedures');
               }              
             }
           }
@@ -707,16 +749,16 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         // usedProcedures (for an exact match)
         if (check.assigned(where.usedProcedures)) {
           if (check.nonEmptyArray(where.usedProcedures)) {
-            builder.where('timeseries.used_procedure', where.usedProcedures);
+            builder.where('timeseries.used_procedures', where.usedProcedures);
           }
           if (check.nonEmptyObject(where.usedProcedures)) {
             // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
             if (check.boolean(where.usedProcedures.exists)) {
               if (where.usedProcedures.exists === true) {
-                builder.whereNotNull('timeseries.used_procedure');
+                builder.whereNotNull('timeseries.used_procedures');
               } 
               if (where.usedProcedures.exists === false) {
-                builder.whereNull('timeseries.used_procedure');
+                builder.whereNull('timeseries.used_procedures');
               }              
             }
           }
@@ -829,9 +871,10 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
     'inDeployments',
     'hostedByPath',
     'observedProperty',
+    'units',
     'hasFeatureOfInterest',
-    'discipline',
-    'usedProcedure'
+    'disciplines',
+    'usedProcedures'
   ]);
 
   return props;

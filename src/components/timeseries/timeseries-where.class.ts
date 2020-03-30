@@ -10,6 +10,7 @@ export class TimeseriesWhere {
   public hostedByPath?: any; // for exact matches
   public isHostedBy?: any; // for when the platform id can occur anywhere in the path
   public hostedByPathSpecial?: any; // allows lquery syntax
+  public unit: any;
   public hasFeatureOfInterest?: any;
   public observedProperty?: any;
   public discipline?: any;

@@ -26,10 +26,11 @@ export async function createTimeseriesTable(): Promise<void> {
     table.string('made_by_sensor').notNullable();
     table.specificType('in_deployments', 'TEXT[]');
     table.specificType('hosted_by_path', 'ltree');
+    table.string('unit');
     table.string('has_feature_of_interest');
     table.string('observed_property');
-    table.specificType('discipline', 'TEXT[]');
-    table.specificType('used_procedure', 'TEXT[]');
+    table.specificType('disciplines', 'TEXT[]');
+    table.specificType('used_procedures', 'TEXT[]');
 
   });
 
@@ -247,6 +248,45 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
         }
       }
 
+      // observedProperty
+      if (check.assigned(where.observedProperty)) {
+        if (check.nonEmptyString(where.observedProperty)) {
+          builder.where('observed_property', where.observedProperty);
+        }
+        if (check.nonEmptyObject(where.observedProperty)) {
+          if (check.nonEmptyArray(where.observedProperty.in)) {
+            builder.whereIn('observed_property', where.observedProperty.in);
+          }
+          if (check.boolean(where.observedProperty.exists)) {
+            if (where.observedProperty.exists === true) {
+              builder.whereNotNull('observed_property');
+            } 
+            if (where.observedProperty.exists === false) {
+              builder.whereNull('observed_property');
+            }
+          }     
+        }
+      }
+
+      // unit
+      if (check.assigned(where.unit)) {
+        if (check.nonEmptyString(where.unit)) {
+          builder.where('unit', where.unit);
+        }
+        if (check.nonEmptyObject(where.unit)) {
+          if (check.nonEmptyArray(where.unit.in)) {
+            builder.whereIn('unit', where.unit.in);
+          }
+          if (check.boolean(where.unit.exists)) {
+            if (where.unit.exists === true) {
+              builder.whereNotNull('unit');
+            } 
+            if (where.unit.exists === false) {
+              builder.whereNull('unit');
+            }
+          }     
+        }
+      }
 
       // hasFeatureOfInterest
       if (check.assigned(where.hasFeatureOfInterest)) {
@@ -268,43 +308,63 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
         }
       }
 
-      // observedProperty
-      if (check.assigned(where.observedProperty)) {
-        if (check.nonEmptyString(where.observedProperty)) {
-          builder.where('observed_property', where.observedProperty);
+      // discipline
+      if (check.assigned(where.discipline)) {
+        if (check.nonEmptyString(where.discipline)) {
+          // Find any timeseries whose in_deployments array contains this one deployment (if there are others in the array then it will still match)
+          builder.where('disciplines', '&&', [where.discipline]);
         }
-        if (check.nonEmptyObject(where.observedProperty)) {
-          if (check.nonEmptyArray(where.observedProperty.in)) {
-            builder.whereIn('observed_property', where.observedProperty.in);
+        if (check.nonEmptyObject(where.discipline)) {
+          if (check.nonEmptyArray(where.discipline.in)) {
+            // i.e. looking for any overlap
+            builder.where('disciplines', '&&', where.discipline.in);
           }
-          if (check.boolean(where.observedProperty.exists)) {
-            if (where.observedProperty.exists === true) {
-              builder.whereNotNull('observed_property');
+          if (check.boolean(where.discipline.exists)) {
+            if (where.discipline.exists === true) {
+              builder.whereNotNull('disciplines');
             } 
-            if (where.observedProperty.exists === false) {
-              builder.whereNull('observed_property');
-            }
-          }     
+            if (where.discipline.exists === false) {
+              builder.whereNull('disciplines');
+            }              
+          }
         }
-      }
+      }      
+
+      // disciplines - for an exact match (after sorting alphabetically)
+      if (check.assigned(where.disciplines)) {
+        if (check.nonEmptyArray(where.disciplines)) {
+          builder.where('disciplines', sortBy(where.disciplines));
+        }
+        if (check.nonEmptyObject(where.disciplines)) {
+          // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
+          if (check.boolean(where.disciplines.exists)) {
+            if (where.disciplines.exists === true) {
+              builder.whereNotNull('disciplines');
+            } 
+            if (where.disciplines.exists === false) {
+              builder.whereNull('disciplines');
+            }              
+          }
+        }
+      }   
 
       // usedProcedure
       if (check.assigned(where.usedProcedure)) {
         if (check.nonEmptyString(where.usedProcedure)) {
           // Find any timeseries whose used_procedure array contains this one procedure (if there are others in the array then it will still match)
-          builder.where('used_procedure', '&&', [where.usedProcedure]);
+          builder.where('used_procedures', '&&', [where.usedProcedure]);
         }
         if (check.nonEmptyObject(where.usedProcedure)) {
           if (check.nonEmptyArray(where.usedProcedure.in)) {
             // i.e. looking for any overlap
-            builder.where('used_procedure', '&&', where.usedProcedure.in);
+            builder.where('used_procedures', '&&', where.usedProcedure.in);
           }
           if (check.boolean(where.usedProcedure.exists)) {
             if (where.usedProcedure.exists === true) {
-              builder.whereNotNull('used_procedure');
+              builder.whereNotNull('used_procedures');
             } 
             if (where.usedProcedure.exists === false) {
-              builder.whereNull('used_procedure');
+              builder.whereNull('used_procedures');
             }              
           }
         }
@@ -313,16 +373,16 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
       // usedProcedures (for an exact match)
       if (check.assigned(where.usedProcedures)) {
         if (check.nonEmptyArray(where.usedProcedures)) {
-          builder.where('used_procedure', where.usedProcedures);
+          builder.where('used_procedures', where.usedProcedures);
         }
         if (check.nonEmptyObject(where.usedProcedures)) {
           // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
           if (check.boolean(where.usedProcedures.exists)) {
             if (where.usedProcedures.exists === true) {
-              builder.whereNotNull('used_procedure');
+              builder.whereNotNull('used_procedures');
             } 
             if (where.usedProcedures.exists === false) {
-              builder.whereNull('used_procedure');
+              builder.whereNull('used_procedures');
             }              
           }
         }
@@ -345,7 +405,7 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
 export async function findSingleMatchingTimeseries(where: TimeseriesWhere): Promise<TimeseriesApp | void> {
 
   // Let's check every property we'll match by has been specified
-  const requiredProps = ['madeBySensor', 'inDeployments', 'hostedByPath', 'observedProperty', 'hasFeatureOfInterest', 'discipline', 'usedProcedure'];
+  const requiredProps = ['madeBySensor', 'inDeployments', 'hostedByPath', 'observedProperty', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
   requiredProps.forEach((prop) => {
     if (check.not.assigned(where[prop])) {
       throw new Error(`The '${prop} property of the where object must be assigned.'`);
@@ -373,9 +433,9 @@ export async function findSingleMatchingTimeseries(where: TimeseriesWhere): Prom
 export function convertPropsToExactWhere(props: TimeseriesProps): any {
 
   const findQuery: any = {};
-  const potentialProps = ['madeBySensor', 'inDeployments', 'hostedByPath', 'observedProperty', 'hasFeatureOfInterest', 'discipline', 'usedProcedure'];
-  const orderNotImportantProps = ['inDeployments', 'discipline'];
-  // For the inDeployments and discipline array the order has no meaning, and thus we should sort the array just in case they are every provided in a different order at some point.
+  const potentialProps = ['madeBySensor', 'inDeployments', 'hostedByPath', 'observedProperty', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
+  const orderNotImportantProps = ['inDeployments', 'disciplines'];
+  // For the inDeployments and disciplines array the order has no meaning, and thus we should sort the array just in case they are every provided in a different order at some point.
 
   potentialProps.forEach((propKey) => {
 
