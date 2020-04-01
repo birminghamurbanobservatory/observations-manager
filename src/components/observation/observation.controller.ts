@@ -44,7 +44,8 @@ const createObservationSchema = joi.object({
     id: joi.string().guid(), // this is the client_id, a uuid,
     validAt: joi.string().isoDate(),
     geometry: joi.object({
-      type: joi.string().required(),
+      // For now let's only allow Point locations, although the locations table can handle LineStrings and Polygons, allowing them would make some spatial queries a little trickier, e.g. getting all observations above a certain height. Perhaps later down the line I'll need to support LineStrings and Polygons, e.g. for a rainfall radar image so I can capture it's spatial extent.
+      type: joi.string().valid('Point').required(),
       coordinates: joi.array().required()
     })
     .custom((value) => {
