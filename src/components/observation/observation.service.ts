@@ -147,7 +147,7 @@ export async function getObservationByClientId(id: string): Promise<ObservationA
 }
 
 
-export async function getObservations(where: ObservationsWhere, options: {limit?: number; offset?: number; onePer: string}): Promise<ObservationApp[]> {
+export async function getObservations(where: ObservationsWhere, options: {limit?: number; offset?: number; onePer: string; sortBy: string; sortOrder: string}): Promise<ObservationApp[]> {
 
   // If the request is for "onePer" then it ends up being a fundamentally different SQL query, because we need to use a lateral join instead.
   const onePerEnabled = check.assigned(options.onePer);
@@ -488,6 +488,19 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
     //------------------------
     if (!onePerEnabled) {
 
+      let orderByArray;
+      if (options.sortBy === 'timeseries') {
+        orderByArray = [
+          {column: 'observations.timeseries', order: options.sortOrder || 'asc'},
+          {column: 'observations.result_time', order: options.sortOrder || 'asc'}
+          // I think having the sort order of the result_time set the same as the sort order of the timeseries column will be the more efficient, as it should be the order that the index is in.
+        ];
+      } else {
+        orderByArray = [
+          {column: 'observations.result_time', order: options.sortOrder || 'asc'}
+        ];
+      } 
+
       observations = await knex('observations')
       .select(columnsToSelectDuringJoin)
       .leftJoin('timeseries', 'observations.timeseries', 'timeseries.id')
@@ -783,7 +796,8 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
 
       })
       .limit(options.limit || 100000)
-      .offset(options.offset || 0);
+      .offset(options.offset || 0)
+      .orderBy(orderByArray);
 
     }
 

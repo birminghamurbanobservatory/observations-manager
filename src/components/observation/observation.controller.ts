@@ -309,7 +309,11 @@ const getObservationsOptionsSchema = joi.object({
     .positive()
     .default(0),
   onePer: joi.string()
-    .valid('sensor', 'timeseries') // TODO: add hosted_by_path at some point? Although this is tricker given the nested structure of platforms and that a sensor may not be on any platform.
+    .valid('sensor', 'timeseries'), // TODO: add hosted_by_path at some point? Although this is tricker given the nested structure of platforms and that a sensor may not be on any platform.
+  sortBy: joi.string()
+    .valid('timeseries', 'resultTime'),
+  sortOrder: joi.string()
+    .valid('asc', 'desc')
   // TODO: Provide the option to include/exclude the location objects.
 })
 .required();
@@ -328,7 +332,9 @@ export async function getObservations(where = {}, options = {}): Promise<{data: 
   return {
     data: observationsForClient,
     // TODO: At some point you may want to calculate and return the total number of observations available, e.g. for pagination, this information will go in this meta object. I just need to make sure I can calculate this efficiently.
-    meta: {} 
+    meta: {
+      count: observationsForClient.length
+    } 
   };
 
 }
