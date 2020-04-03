@@ -817,20 +817,20 @@ export function buildExtraOnPerClauses(where): string {
   if (check.assigned(where.resultTime)) {
     if (check.nonEmptyString(where.resultTime)) {
       // This is in case I allow clients to request observations at an exact resultTime 
-      sql += ` AND observations.result_time = ${where.resultTime}`;
+      sql += ` AND observations.result_time = '${where.resultTime}'`;
     }
     if (check.nonEmptyObject(where.resultTime)) {
       if (check.assigned(where.resultTime.gte)) {
-        sql += `AND observations.result_time >= ${where.resultTime.gte}`;
+        sql += `AND observations.result_time >= '${where.resultTime.gte}'`;
       }
       if (check.assigned(where.resultTime.gt)) {
-        sql += `AND observations.result_time > ${where.resultTime.gt}`;
+        sql += `AND observations.result_time > '${where.resultTime.gt}'`;
       }
       if (check.assigned(where.resultTime.lte)) {
-        sql += `AND observations.result_time <= ${where.resultTime.lte}`;
+        sql += `AND observations.result_time <= '${where.resultTime.lte}'`;
       }      
       if (check.assigned(where.resultTime.lt)) {
-        sql += `AND observations.result_time < ${where.resultTime.lt}`;
+        sql += `AND observations.result_time < '${where.resultTime.lt}'`;
       }      
 
     }
