@@ -19,7 +19,7 @@ export async function createLocationsTable(): Promise<void> {
     table.bigIncrements('id');
     table.text('client_id').unique().notNullable(); // the unique method here should create an index
     table.specificType('geo', 'GEOGRAPHY').notNullable(); // defaults to SRID=4326, and can handle locations with elevation
-    table.jsonb('geojson').notNullable();
+    table.jsonb('geojson').notNullable(); // geojson geometry object
     table.timestamp('valid_at', {useTz: true}).notNullable();
 
   });
