@@ -830,7 +830,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         // Github issue: https://github.com/jfgodoy/knex-postgis/issues/40
 
         // Proximity
-
+        // TODO - should have enough knex-postgis functions to be able to do this here.
 
         // TODO: Allow =, >=, <, etc on value_number.
 
