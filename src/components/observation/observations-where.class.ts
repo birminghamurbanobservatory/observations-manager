@@ -14,7 +14,10 @@ export class ObservationsWhere {
   public usedProcedure?: any;
   public usedProcedures?: any;
   public flags?: any;
-  // TODO: geospatial filters
+  public latitude: Coordinate;
+  public longitude: Coordinate;
+  public height: Coordinate;
+  public proximity: Proximity;
 }
 
 class ResultTime {
@@ -24,6 +27,23 @@ class ResultTime {
   public lte?: Date;
 }
 
+class Coordinate {
+  public gt?: Date;
+  public gte?: Date;
+  public lt?: Date;
+  public lte?: Date;
+}
+
 class InObject {
   public in: string[]
+}
+
+class Proximity {
+  public centre: ProximityCentre;
+  public radius: number;
+} 
+
+class ProximityCentre {
+  public latitude: number;
+  public longitude: number;
 }

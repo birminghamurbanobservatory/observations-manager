@@ -44,7 +44,7 @@ const createObservationSchema = joi.object({
     id: joi.string().guid(), // this is the client_id, a uuid,
     validAt: joi.string().isoDate(),
     geometry: joi.object({
-      // For now let's only allow Point locations, although the locations table can handle LineStrings and Polygons, allowing them would make some spatial queries a little trickier, e.g. getting all observations above a certain height. Perhaps later down the line I'll need to support LineStrings and Polygons, e.g. for a rainfall radar image so I can capture it's spatial extent.
+      // For now let's only allow Point locations, although the locations table can handle LineStrings and Polygons, allowing them would make some spatial queries a little trickier (e.g. ST_Y won't work with non-points without using ST_CENTROID). Perhaps later down the line I'll need to support LineStrings and Polygons, e.g. for a rainfall radar image so I can capture it's spatial extent.
       type: joi.string().valid('Point').required(),
       coordinates: joi.array().required()
     })
@@ -292,8 +292,33 @@ const getObservationsWhereSchema = joi.object({
   // TODO: Add the ability to find observations with a specific flag
   flags: joi.object({
     exists: joi.boolean()
+  }),
+  // Spatial queries
+  latitude: joi.object({
+    lt: joi.number().min(-90).max(90),
+    lte: joi.number().min(-90).max(90),
+    gt: joi.number().min(-90).max(90),
+    gte: joi.number().min(-90).max(90)
+  }),
+  longitude: joi.object({
+    lt: joi.number().min(-180).max(180),
+    lte: joi.number().min(-180).max(180),
+    gt: joi.number().min(-180).max(180),
+    gte: joi.number().min(-180).max(180)
+  }),
+  height: joi.object({
+    lt: joi.number(),
+    lte: joi.number(),
+    gt: joi.number(),
+    gte: joi.number()
+  }),
+  proximity: joi.object({
+    centre: joi.object({
+      latitude: joi.number().min(-90).max(90).required(),
+      longitude: joi.number().min(-180).max(180).required()
+    }).required(),
+    radius: joi.number().min(0).required() // in metres
   })
-  // TODO: Add in spatial queries
 })
 .required();
 // Decided not to have a minimum number of keys here, i.e. so that superusers or other microservices can get observations without limitations. The limitation will come from a pagination approach, whereby only so many observations can be returned per request.

@@ -16,8 +16,9 @@ import {stripNullProperties} from '../../utils/strip-null-properties';
 import {convertKeysToCamelCase} from '../../utils/case-converters';
 import {locationAppToClient} from '../location/location.service';
 import {ltreeStringToArray, platformIdToAnywhereLquery, arrayToLtreeString} from '../../db/db-helpers';
+import knexPostgis from 'knex-postgis';
 
-
+const st = knexPostgis(knex);
 
 export async function createObservationsTable(): Promise<void> {
 
@@ -452,8 +453,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
                 }              
               }
             }
-          }          
-
+          }         
 
         })
         .as(selectedTimeseriesAlias);
@@ -466,6 +466,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
             SELECT 
               id AS loc_id, 
               client_id AS location_client_id,
+              geo AS location_geo,
               geojson AS location_geojson,
               valid_at AS location_valid_at 
             FROM locations
@@ -526,7 +527,6 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
             if (check.assigned(where.resultTime.lt)) {
               builder.where('observations.result_time', '<', where.resultTime.lt);
             }      
-
           }
         }
 
@@ -791,8 +791,48 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
           }
         }
 
-        // TODO: add spatial queries
-        // Allow =, >=, <, etc on the numeric values.
+        // I could use something like ST_CONTAINS and ST_MakeEnvelope to make a bounding box if i have lat and lon values that represent all 4 sides, but given that I'm currently just dealing with points the approach below is easier to code and hopefully not any slower to query?
+
+        // longitude
+        if (check.assigned(where.longitude)) {
+          if (check.assigned(where.longitude.gte)) {
+            // N.B: If you have anything other than points in your geo column then this won't work, it won't like the ST_Y command, you would need to use ST_CENTROID first.
+            builder.where(st.x(st.geometry('locations.geo')), '>=', where.longitude.gte);
+          }
+          if (check.assigned(where.longitude.gt)) {
+            builder.where(st.x(st.geometry('locations.geo')), '>', where.longitude.gt);
+          }
+          if (check.assigned(where.longitude.lte)) {
+            builder.where(st.x(st.geometry('locations.geo')), '<=', where.longitude.lte);
+          }      
+          if (check.assigned(where.longitude.lt)) {
+            builder.where(st.x(st.geometry('locations.geo')), '<', where.longitude.lt);
+          }      
+        }
+
+        // latitude
+        if (check.assigned(where.latitude)) {
+          if (check.assigned(where.latitude.gte)) {
+            builder.where(st.y(st.geometry('locations.geo')), '>=', where.latitude.gte);
+          }
+          if (check.assigned(where.latitude.gt)) {
+            builder.where(st.y(st.geometry('locations.geo')), '>', where.latitude.gt);
+          }
+          if (check.assigned(where.latitude.lte)) {
+            builder.where(st.y(st.geometry('locations.geo')), '<=', where.latitude.lte);
+          }      
+          if (check.assigned(where.latitude.lt)) {
+            builder.where(st.y(st.geometry('locations.geo')), '<', where.latitude.lt);
+          }      
+        }
+
+        // height - TODO: At the time of writing, the knex-postgis package doesn't have a st.z function yet, so this is a little trickier. Although I could try taking an approach similar to what I've done with the onePer solution.
+        // Github issue: https://github.com/jfgodoy/knex-postgis/issues/40
+
+        // Proximity
+
+
+        // TODO: Allow =, >=, <, etc on value_number.
 
       })
       .limit(options.limit || 100000)
@@ -850,7 +890,60 @@ export function buildExtraOnPerClauses(where): string {
   }
   // N.B. if you add the ability to filter by specific flags, then you might want do a regex check on the flags to watch for any SQL injection.
 
-  // N.B. when it comes to doing any geospatial queries the locations table may have a different alias, e.g. 'locs'.
+  // longitude
+  if (check.object(where.longitude)) {
+    if (check.nonEmptyObject(where.longitude)) {
+      if (check.number(where.longitude.gte)) {
+        sql += `AND ST_X(location_geo::geometry) >= '${where.longitude.gte}'`;
+      }
+      if (check.number(where.longitude.gt)) {
+        sql += `AND ST_X(location_geo::geometry) > '${where.longitude.gt}'`;
+      }
+      if (check.number(where.longitude.lte)) {
+        sql += `AND ST_X(location_geo::geometry) <= '${where.longitude.lte}'`;
+      }      
+      if (check.number(where.longitude.lt)) {
+        sql += `AND ST_X(location_geo::geometry) < '${where.longitude.lt}'`;
+      }      
+    }
+  }
+
+  // latitude
+  if (check.object(where.latitude)) {
+    if (check.nonEmptyObject(where.latitude)) {
+      if (check.number(where.latitude.gte)) {
+        sql += `AND ST_Y(location_geo::geometry) >= '${where.latitude.gte}'`;
+      }
+      if (check.number(where.latitude.gt)) {
+        sql += `AND ST_Y(location_geo::geometry) > '${where.latitude.gt}'`;
+      }
+      if (check.number(where.latitude.lte)) {
+        sql += `AND ST_Y(location_geo::geometry) <= '${where.latitude.lte}'`;
+      }      
+      if (check.number(where.latitude.lt)) {
+        sql += `AND ST_Y(location_geo::geometry) < '${where.latitude.lt}'`;
+      } 
+    }
+  }
+
+  // height
+  // N.B. if a row doesn't have a Z coordinate then the row will not be returned upon making these height queries.
+  if (check.object(where.height)) {
+    if (check.nonEmptyObject(where.height)) {
+      if (check.number(where.height.gte)) {
+        sql += `AND ST_Z(location_geo::geometry) >= '${where.height.gte}'`;
+      }
+      if (check.number(where.height.gt)) {
+        sql += `AND ST_Z(location_geo::geometry) > '${where.height.gt}'`;
+      }
+      if (check.number(where.height.lte)) {
+        sql += `AND ST_Z(location_geo::geometry) <= '${where.height.lte}'`;
+      }      
+      if (check.number(where.height.lt)) {
+        sql += `AND ST_Z(location_geo::geometry) < '${where.height.lt}'`;
+      }      
+    }
+  }
 
   return sql;
 }
