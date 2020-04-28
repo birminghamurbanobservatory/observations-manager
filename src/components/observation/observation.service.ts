@@ -826,11 +826,32 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
           }      
         }
 
-        // height - TODO: At the time of writing, the knex-postgis package doesn't have a st.z function yet, so this is a little trickier. Although I could try taking an approach similar to what I've done with the onePer solution.
-        // Github issue: https://github.com/jfgodoy/knex-postgis/issues/40
+        // height
+        if (check.assigned(where.height)) {
+          if (check.assigned(where.height.gte)) {
+            builder.where(st.z(st.geometry('locations.geo')), '>=', where.height.gte);
+          }
+          if (check.assigned(where.height.gt)) {
+            builder.where(st.z(st.geometry('locations.geo')), '>', where.height.gt);
+          }
+          if (check.assigned(where.height.lte)) {
+            builder.where(st.z(st.geometry('locations.geo')), '<=', where.height.lte);
+          }      
+          if (check.assigned(where.height.lt)) {
+            builder.where(st.z(st.geometry('locations.geo')), '<', where.height.lt);
+          }      
+        }
 
         // Proximity
-        // TODO - should have enough knex-postgis functions to be able to do this here.
+        if (check.object(where.proximity) && check.number(where.proximity.radius) && check.number(where.proximity.centre.latitude) && check.number(where.proximity.centre.longitude)) {
+          builder.where(
+            st.dwithin(
+              'geo', 
+              st.geography(st.setSRID(st.makePoint(where.proximity.centre.longitude, where.proximity.centre.latitude), 4326)),
+              where.proximity.radius
+            )
+          );
+        }
 
         // TODO: Allow =, >=, <, etc on value_number.
 
@@ -944,6 +965,13 @@ export function buildExtraOnPerClauses(where): string {
       }      
     }
   }
+
+  // proximity
+  // important to have plenty of type checking here to prevent SQL injection
+  if (check.object(where.proximity) && check.number(where.proximity.radius) && check.number(where.proximity.centre.latitude) && check.number(where.proximity.centre.longitude)) {
+    sql += `AND ST_DWithin(location_geo, ST_SetSRID(ST_MakePoint(${where.proximity.centre.longitude}, ${where.proximity.centre.latitude}), 4326)::geography, ${where.proximity.radius})`;
+  }
+
 
   return sql;
 }
