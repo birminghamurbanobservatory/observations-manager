@@ -1,6 +1,6 @@
 {
   "name": "observations-manager",
-  "version": "1.3.7",
+  "version": "1.4.0",
   "description": "Saves and serves sensor observations.",
   "main": "index.js",
   "scripts": {
