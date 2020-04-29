@@ -23,7 +23,7 @@ export async function createTimeseriesTable(): Promise<void> {
     table.increments('id');
     table.timestamp('first_obs', {useTz: true}).notNullable();
     table.timestamp('last_obs', {useTz: true}).notNullable();
-    table.string('made_by_sensor').notNullable();
+    table.string('made_by_sensor'); // I've made this nullable for the sake of derived observations with no sensor.
     table.specificType('in_deployments', 'TEXT[]');
     table.specificType('hosted_by_path', 'ltree');
     table.string('observed_property');
