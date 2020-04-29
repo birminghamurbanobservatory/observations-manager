@@ -209,6 +209,18 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         .where((builder) => {
           // These are basically the same as for a normal request, except we can only filter by columns that the timeseries table has.
 
+          // timeseries ids
+          if (check.assigned(where.timeseriesId)) {
+            if (check.integer(where.timeseriesId)) {
+              builder.where('timeseries.id', where.timeseriesId);
+            }
+            if (check.nonEmptyObject(where.timeseriesId)) {
+              if (check.nonEmptyArray(where.timeseriesId.in)) {
+                builder.whereIn('timeseries.id', where.timeseriesId.in);
+              }   
+            }
+          }
+
           // madeBySensor
           if (check.assigned(where.madeBySensor)) {
             if (check.nonEmptyString(where.madeBySensor)) {
@@ -528,6 +540,18 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
             if (check.assigned(where.resultTime.lt)) {
               builder.where('observations.result_time', '<', where.resultTime.lt);
             }      
+          }
+        }
+
+        // timeseries ids
+        if (check.assigned(where.timeseriesId)) {
+          if (check.integer(where.timeseriesId)) {
+            builder.where('timeseries.id', where.timeseriesId);
+          }
+          if (check.nonEmptyObject(where.timeseriesId)) {
+            if (check.nonEmptyArray(where.timeseriesId.in)) {
+              builder.whereIn('timeseries.id', where.timeseriesId.in);
+            }   
           }
         }
 

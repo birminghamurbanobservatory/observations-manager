@@ -15,6 +15,7 @@ import {validateGeometry} from '../../utils/geojson-validator';
 import {GeometryMismatch} from './errors/GeometryMismatch';
 import * as check from 'check-types';
 import {kebabCaseRegex} from '../../utils/regular-expressions';
+import hasher from '../../utils/hasher';
 
 const maxObsPerRequest = config.obs.maxPerRequest;
 
@@ -192,6 +193,12 @@ export async function getObservation(id: string): Promise<ObservationClient> {
 // Get Observations
 //-------------------------------------------------
 const getObservationsWhereSchema = joi.object({
+  timeseriesId: joi.alternatives().try(
+    joi.string().alphanum(), // catches any accidental commas that might be present
+    joi.object({
+      in: joi.array().items(joi.string()).min(1).required()
+    })
+  ),
   resultTime: joi.object({
     lt: joi.string().isoDate(),
     lte: joi.string().isoDate(),
@@ -324,6 +331,7 @@ const getObservationsWhereSchema = joi.object({
 // Decided not to have a minimum number of keys here, i.e. so that superusers or other microservices can get observations without limitations. The limitation will come from a pagination approach, whereby only so many observations can be returned per request.
 
 const getObservationsOptionsSchema = joi.object({
+  // TODO: Add the option to return a condensed set of observations, i.e. without all the duplicated timeseries data included. E.g. have a boolean 'condense' option. Then make sure we only SELECT these columns from the database.
   limit: joi.number()
     .integer()
     .positive()
@@ -349,6 +357,15 @@ export async function getObservations(where = {}, options = {}): Promise<{data: 
   if (whereErr) throw new BadRequest(whereErr.message);
   const {error: optionsErr, value: optionsValidated} = getObservationsOptionsSchema.validate(options);
   if (whereErr) throw new BadRequest(optionsErr.message);
+
+  if (check.assigned(whereValidated.timeseriesId)) {
+    if (check.string(whereValidated.timeseriesId)) {
+      whereValidated.timeseriesId = Number(hasher.decode(whereValidated.timeseriesId));
+    }
+    if (check.array(whereValidated.timeseriesId.in)) {
+      whereValidated.timeseriesId.in = whereValidated.timeseriesId.in.map((clientId) => Number(hasher.decode(clientId)));
+    }
+  }
 
   const observations = await observationService.getObservations(whereValidated, optionsValidated);
 

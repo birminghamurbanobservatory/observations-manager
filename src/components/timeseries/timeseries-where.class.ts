@@ -3,6 +3,7 @@
 // Or derived from incoming observations in order to find timeseries that this obs would belong to.
 // Because of these two sources you have both usedProcedure, and usedProcedures, for example.
 export class TimeseriesWhere {
+  public id?: any;
   public resultTime?: ResultTime;
   public firstObs?: ResultTime;
   public lastObs?: ResultTime;

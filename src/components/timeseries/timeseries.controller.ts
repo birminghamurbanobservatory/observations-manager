@@ -28,6 +28,9 @@ export async function getSingleTimeseries(clientId: string): Promise<TimeseriesC
 // Get Multiple Timeseries
 //-------------------------------------------------
 const getMultipleTimeseriesWhereSchema = joi.object({
+  id: joi.object({
+    in: joi.array().items(joi.string()).min(1).required()
+  }),
   firstObs: joi.object({
     lt: joi.string().isoDate(),
     lte: joi.string().isoDate(),
@@ -162,6 +165,10 @@ export async function getMultipleTimeseries(where = {}, options = {}): Promise<{
   if (whereErr) throw new BadRequest(whereErr.message);
   const {error: optionsErr, value: optionsValidated} = getMultipleTimeseriesOptionsSchema.validate(options);
   if (whereErr) throw new BadRequest(optionsErr.message);
+
+  if (whereValidated.id && whereValidated.id.in) {
+    whereValidated.id.in = whereValidated.id.in.map((clientId) => Number(hasher.decode(clientId)));
+  }
 
   const timeseries = await timeseriesService.findTimeseries(whereValidated, optionsValidated);
 

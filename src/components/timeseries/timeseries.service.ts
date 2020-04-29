@@ -119,6 +119,15 @@ export async function findTimeseries(where: TimeseriesWhere, options: {limit?: n
     .select()
     .where((builder) => {
 
+      // Matching ids
+      if (check.assigned(where.id)) {
+        if (check.nonEmptyObject(where.id)) {
+          if (check.nonEmptyArray(where.id.in)) {
+            builder.whereIn('id', where.id.in);
+          }   
+        }
+      }
+
       // resultTime
       // This is how we exclude timeseries that have no chance of overlapping with the resultTime range we're interested in.
       if (check.assigned(where.resultTime)) {

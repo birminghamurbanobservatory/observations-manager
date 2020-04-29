@@ -1,5 +1,6 @@
 export class ObservationsWhere {
   public resultTime?: ResultTime;
+  public timeseriesId?: any;
   public madeBySensor?: any; // i'd like to write this as "string | InObject" but I end up with issues.
   public inDeployment?: any;
   public inDeployments?: any;
