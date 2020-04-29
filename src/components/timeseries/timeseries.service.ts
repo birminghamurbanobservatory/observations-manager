@@ -2,7 +2,7 @@ import {TimeseriesProps} from './timeseries-props.class';
 import * as check from 'check-types';
 import {TimeseriesApp} from './timeseries-app.class';
 import {TimeseriesDb} from './timeseries-db.class';
-import {sortBy} from 'lodash';
+import {sortBy, cloneDeep} from 'lodash';
 import {TimeseriesNotFound} from './errors/TimeseriesNotFound';
 import {GetTimeseriesFail} from './errors/GetTimeseriesFail';
 import {GetTimeseriesUsingIdsFail} from './errors/GetTimeseriesUsingIdsFail';
@@ -14,6 +14,8 @@ import {arrayToLtreeString, ltreeStringToArray, platformIdToAnywhereLquery} from
 import * as logger from 'node-logger';
 import {UpdateTimeseriesFail} from './errors/UpdateTimeseriesFail';
 import {CreateTimeseriesFail} from './errors/CreateTimeseriesFail';
+import hasher from '../../utils/hasher';
+import {TimeseriesClient} from './timeseries-client.class';
 
 
 
@@ -108,7 +110,7 @@ export async function getTimeseries(id: number): Promise<TimeseriesApp> {
 }
 
 // i.e. find multiple timeseries
-export async function findTimeseries(where: TimeseriesWhere): Promise<TimeseriesApp[]> {
+export async function findTimeseries(where: TimeseriesWhere, options: {limit?: number; offset?: number; sortBy?: string; sortOrder?: string} = {}): Promise<TimeseriesApp[]> {
 
   let timeseries: TimeseriesDb[];
 
@@ -139,6 +141,48 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
             builder.where('first_obs', '<', where.resultTime);
           }      
 
+        }
+      }
+
+      // firstObs
+      if (check.assigned(where.firstObs)) {
+        if (check.nonEmptyString(where.firstObs) || check.date(where.firstObs)) { 
+          builder.where('first_obs', where.firstObs);
+        }
+        if (check.nonEmptyObject(where.firstObs)) {
+          if (check.assigned(where.firstObs.gte)) {
+            builder.where('first_obs', '>=', where.firstObs.gte);
+          }
+          if (check.assigned(where.firstObs.gt)) {
+            builder.where('first_obs', '>', where.firstObs.gt);
+          }
+          if (check.assigned(where.firstObs.lte)) {
+            builder.where('first_obs', '<=', where.firstObs.lte);
+          }      
+          if (check.assigned(where.firstObs.lt)) {
+            builder.where('first_obs', '<', where.firstObs.lt);
+          }      
+        }
+      }
+
+      // lastObs
+      if (check.assigned(where.lastObs)) {
+        if (check.nonEmptyString(where.lastObs) || check.date(where.lastObs)) {
+          builder.where('last_obs', where.lastObs);
+        }
+        if (check.nonEmptyObject(where.lastObs)) {
+          if (check.assigned(where.lastObs.gte)) {
+            builder.where('last_obs', '>=', where.lastObs.gte);
+          }
+          if (check.assigned(where.lastObs.gt)) {
+            builder.where('last_obs', '>', where.lastObs.gt);
+          }
+          if (check.assigned(where.lastObs.lte)) {
+            builder.where('last_obs', '<=', where.lastObs.lte);
+          }      
+          if (check.assigned(where.lastObs.lt)) {
+            builder.where('last_obs', '<', where.lastObs.lt);
+          }      
         }
       }
 
@@ -388,7 +432,10 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
         }
       }
       
-    });
+    })
+    .limit(options.limit || 10000)
+    .offset(options.offset || 0)
+    .orderBy([{column: options.sortBy || 'id', order: options.sortOrder || 'asc'}]);
 
   } catch (err) {
     throw new GetTimeseriesFail(undefined, err.message);
@@ -398,7 +445,8 @@ export async function findTimeseries(where: TimeseriesWhere): Promise<Timeseries
 
 }
 
- 
+
+
 
 // Simply acts as a wrapper around the findTimeseries function, and either picks the first row, or if no results were found it returns undefined.
 // It expects the where argument to have already passed through the convertPropsToExactWhere function.
@@ -499,4 +547,13 @@ export function timeseriesDbToApp(timeseriesDb: TimeseriesDb): TimeseriesApp {
     timeseriesApp.hostedByPath = ltreeStringToArray(timeseriesApp.hostedByPath);
   }
   return timeseriesApp;
+}
+
+
+export function timeseriesAppToClient(timeseriesApp: TimeseriesApp): TimeseriesClient {
+  const timeseriesClient: any = cloneDeep(timeseriesApp); 
+  timeseriesClient.id = hasher.encode(timeseriesClient.id);
+  timeseriesClient.firstObs = timeseriesClient.firstObs.toISOString();
+  timeseriesClient.lastObs = timeseriesClient.lastObs.toISOString();
+  return timeseriesClient;
 }

@@ -4,6 +4,8 @@
 // Because of these two sources you have both usedProcedure, and usedProcedures, for example.
 export class TimeseriesWhere {
   public resultTime?: ResultTime;
+  public firstObs?: ResultTime;
+  public lastObs?: ResultTime;
   public madeBySensor?: any; // i'd like to write this as "string | InObject" but I end up with issues.
   public inDeployment?: any;
   public inDeployments?: any;
