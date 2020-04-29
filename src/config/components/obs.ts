@@ -11,6 +11,8 @@ const schema = joi.object({
   OBS_MAX_PER_REQUEST: joi.number()
     .max(100000)
     .default(1000),
+  OBS_SALT: joi.string()
+    .required()
 }).unknown() // allows for extra fields (i.e that we don't check for) in the object being checked.
   .required();
 
@@ -33,4 +35,5 @@ if (err) {
 // Pull out the properties we need to create this particular config object. 
 export const obs = {
   maxPerRequest: envVars.OBS_MAX_PER_REQUEST,
+  salt: envVars.OBS_SALT
 };

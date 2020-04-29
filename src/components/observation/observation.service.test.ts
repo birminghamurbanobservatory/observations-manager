@@ -1,4 +1,5 @@
 import {extractTimeseriesPropsFromObservation, generateObservationId, deconstructObservationId, observationAppToClient, observationClientToApp, observationDbToApp} from './observation.service';
+import * as check from 'check-types';
 
 
 describe('Testing of extractTimeseriesPropsFromObservation function', () => {
@@ -57,54 +58,48 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
 
 describe('Testing of generateObservationId function', () => {
 
-  test('Should correctly generate observation id (with resultTime as string)', () => {
+  test('Should encode and decode and get the same component values back (with input resultTime as string)', () => {
     const timeseriesId = 543;
     const resultTime = '2019-12-06T14:57:18.838Z';
-    const expected = '543-0-2019-12-06T14:57:18.838Z';
-    expect(generateObservationId(timeseriesId, resultTime)).toBe(expected);
-  });
-
-  test('Should correctly generate observation id (with resultTime as date)', () => {
-    const timeseriesId = 543;
-    const resultTime = new Date('2019-12-06T14:57:18.838Z');
-    const expected = '543-0-2019-12-06T14:57:18.838Z';
-    expect(generateObservationId(timeseriesId, resultTime)).toBe(expected);
-  });  
-
-  test('Should correctly generate observation id when a location is included', () => {
-    const timeseriesId = 543;
-    const locationId = 23;
-    const resultTime = '2019-12-06T14:57:18.838Z';
-    const expected = '543-23-2019-12-06T14:57:18.838Z';
-    expect(generateObservationId(timeseriesId, resultTime, locationId)).toBe(expected);
-  });
-
-});
-
-
-describe('Testing of deconstructObservationId function', () => {
-
-  test('Should correctly deconstruct when location was available', () => {
-    const id = '25-54-2019-12-06T14:57:18.838Z';
+    const id = generateObservationId(timeseriesId, resultTime);
+    expect(check.nonEmptyString(id)).toBe(true);
+    const decoded = deconstructObservationId(id);
     const expected = {
-      timeseriesId: 25,
-      resultTime: new Date('2019-12-06T14:57:18.838Z'),
-      locationId: 54
-    };
-    expect(deconstructObservationId(id)).toEqual(expected);
-  });
-
-  test('Should correctly deconstruct when location was NOT available', () => {
-    const id = '25-0-2019-12-06T14:57:18.838Z';
-    const expected = {
-      timeseriesId: 25,
+      timeseriesId: 543,
       resultTime: new Date('2019-12-06T14:57:18.838Z')
     };
-    expect(deconstructObservationId(id)).toEqual(expected);
+    expect(decoded).toEqual(expected);
+  });
+
+  test('Should encode and decode and get the same component values back (with input resultTime as date)', () => {
+    const timeseriesId = 543;
+    const resultTime = new Date('2019-12-06T14:57:18.838Z');
+    const id = generateObservationId(timeseriesId, resultTime);
+    expect(check.nonEmptyString(id)).toBe(true);
+    const decoded = deconstructObservationId(id);
+    const expected = {
+      timeseriesId: 543,
+      resultTime: new Date('2019-12-06T14:57:18.838Z')
+    };
+    expect(decoded).toEqual(expected);
+  });  
+
+  test('Should encode and decode and get the same component values back when a location is included', () => {
+    const timeseriesId = 543;
+    const resultTime = new Date('2019-12-06T14:57:18.838Z');
+    const locationId = 23;
+    const id = generateObservationId(timeseriesId, resultTime, locationId);
+    expect(check.nonEmptyString(id)).toBe(true);
+    const decoded = deconstructObservationId(id);
+    const expected = {
+      timeseriesId: 543,
+      resultTime: new Date('2019-12-06T14:57:18.838Z'),
+      locationId: 23
+    };
+    expect(decoded).toEqual(expected);
   });
 
 });
-
 
 
 
@@ -193,6 +188,7 @@ describe('observationAppToClient function tests', () => {
     const observationApp = {
       id: 12424,
       clientId: '151-12-2019-12-04T17:26:23.205Z',
+      timeseriesId: 5223,
       madeBySensor: 'sensor-123',
       hasResult: {
         value: 12
@@ -205,7 +201,7 @@ describe('observationAppToClient function tests', () => {
       usedProcedures: ['PointSample']
     };
 
-    const expected = {
+    const expected: any = {
       id: '151-12-2019-12-04T17:26:23.205Z',
       madeBySensor: 'sensor-123',
       hasResult: {
@@ -220,6 +216,10 @@ describe('observationAppToClient function tests', () => {
     };
 
     const observationClient = observationAppToClient(observationApp);
+    // We can't easily predict the id due to the hashing, so add it here. The id construction is tested elsewhere anyway.
+    expect(check.nonEmptyString(observationClient.timeseriesId)).toBe(true);
+    expected.timeseriesId = observationClient.timeseriesId;
+
     expect(observationClient).toEqual(expected);
 
   });
@@ -297,10 +297,10 @@ describe('observationDbToApp function tests', () => {
       location_valid_at: '2019-07-05T12:43:24.621Z' 
     };
 
-    const expected = {
+    const expected: any = {
       id: 223253,
-      clientId: '54-33-2019-12-04T17:26:23.205Z',
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
+      timeseriesId: 54,
       phenomenonTime: {
         hasBeginning: new Date('2019-12-04T17:16:23.205Z'),
         hasEnd: new Date('2019-12-04T17:26:23.205Z')
@@ -314,7 +314,6 @@ describe('observationDbToApp function tests', () => {
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth',
       usedProcedures: ['tip-sum'],
-      timeseriesId: 54,
       location: {
         id: 33,
         clientId: '146380a6-0614-48ce-a0ae-a1bf935f015c',
@@ -325,6 +324,11 @@ describe('observationDbToApp function tests', () => {
     };
 
     const observationApp = observationDbToApp(observationDb);
+
+    // We can't easily predict the id due to the hashing, so add it here. The id construction is tested elsewhere anyway.
+    expect(check.nonEmptyString(observationApp.clientId)).toBe(true);
+    expected.clientId = observationApp.clientId;
+    
     expect(observationApp).toEqual(expected);
 
   });

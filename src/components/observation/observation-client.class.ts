@@ -2,6 +2,7 @@ import {LocationClient} from '../location/location-client.class';
 
 export class ObservationClient {
   public id?: string;
+  public timeseriesId?: string;
   public madeBySensor?: string;
   public hasResult?: Result;
   public resultTime?: string;

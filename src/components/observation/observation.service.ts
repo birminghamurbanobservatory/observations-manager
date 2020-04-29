@@ -17,6 +17,7 @@ import {convertKeysToCamelCase} from '../../utils/case-converters';
 import {locationAppToClient} from '../location/location.service';
 import {ltreeStringToArray, platformIdToAnywhereLquery, arrayToLtreeString} from '../../db/db-helpers';
 import knexPostgis from 'knex-postgis';
+import hasher from '../../utils/hasher';
 
 const st = knexPostgis(knex);
 
@@ -1026,24 +1027,25 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
 // N.B. The location id is included, because perhaps you have a sensor that can make simulataneous observations as several locations, if you don't incorporate the location then it will only allow you to save a single observation as they'll all have the same resultTime.
 // N.B. we default to the locationId to 0 if no locationId is given, e.g. the obs didn't have a specific location.
 export function generateObservationId(timeseriesId: number, resultTime: string | Date, locationId?): string {
-  // TODO: Use: hashIds(https://www.npmjs.com/package/hashids) instead.
-  return `${timeseriesId}-${locationId || 0}-${new Date(resultTime).toISOString()}`;
+  const resultTimeInMilliseconds = new Date(resultTime).getTime();
+  const id = hasher.encode(resultTimeInMilliseconds, timeseriesId, locationId || 0);
+  return id;
 }
 
 
 
 export function deconstructObservationId(id: string): {timeseriesId: number; resultTime: Date; locationId?: number} {
-  // TODO: Use: hashIds(https://www.npmjs.com/package/hashids) instead.
-  const firstSplit = nthIndex(id, '-', 1);
-  const secondSplit = nthIndex(id, '-', 2);
+  const [resultTimeInMilliseconds, timeseriesId, locationId] = hasher.decode(id);
+
   const components: any = {
-    timeseriesId: Number(id.slice(0, firstSplit)),
-    resultTime: new Date(id.slice(secondSplit + 1, id.length))
-  }; 
-  const locationId = Number(id.slice(firstSplit + 1, secondSplit));
+    resultTime: new Date(Number(resultTimeInMilliseconds)),
+    timeseriesId,
+  };
+
   if (locationId !== 0) {
     components.locationId = locationId;
   }
+
   return components;
 }
 
@@ -1231,7 +1233,10 @@ export function observationAppToClient(observationApp: ObservationApp): Observat
   observationClient.id = observationClient.clientId;
   observationClient.resultTime = observationClient.resultTime.toISOString();
   delete observationClient.clientId;
-  delete observationClient.timeseriesId;
+  // Let's hash the timeseriesId so the user can't workout how many timeseries there are in the database
+  if (observationClient.timeseriesId) {
+    observationClient.timeseriesId = hasher.encode(observationClient.timeseriesId);
+  }
   if (observationClient.location) {
     observationClient.location = locationAppToClient(observationClient.location);
   }
