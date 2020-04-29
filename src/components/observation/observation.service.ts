@@ -1022,7 +1022,7 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
 
 
 
-// N.B: This approach won't work if there's ever a situation when you get more that one observation from a given timeseries at the same resultTime and location. The most likely reason you'd have two observations at the same time is if you apply a procedure that manipulated the data in some way, however this would change the userProcedure array, and therefore the timeseriesId, so this particular example doesn't pose any issues to using this approach.
+// N.B: This approach won't work if there's ever a situation when you get more that one observation from a given timeseries at the same resultTime and location. The most likely reason you'd have two observations at the same time is if you apply a procedure that manipulated the data in some way, however this would change the usedProcedure array, and therefore the timeseriesId, so this particular example doesn't pose any issues to using this approach.
 // N.B. The location id is included, because perhaps you have a sensor that can make simulataneous observations as several locations, if you don't incorporate the location then it will only allow you to save a single observation as they'll all have the same resultTime.
 // N.B. we default to the locationId to 0 if no locationId is given, e.g. the obs didn't have a specific location.
 export function generateObservationId(timeseriesId: number, resultTime: string | Date, locationId?): string {
