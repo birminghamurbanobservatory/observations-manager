@@ -1026,12 +1026,14 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
 // N.B. The location id is included, because perhaps you have a sensor that can make simulataneous observations as several locations, if you don't incorporate the location then it will only allow you to save a single observation as they'll all have the same resultTime.
 // N.B. we default to the locationId to 0 if no locationId is given, e.g. the obs didn't have a specific location.
 export function generateObservationId(timeseriesId: number, resultTime: string | Date, locationId?): string {
+  // TODO: Use: hashIds(https://www.npmjs.com/package/hashids) instead.
   return `${timeseriesId}-${locationId || 0}-${new Date(resultTime).toISOString()}`;
 }
 
 
 
 export function deconstructObservationId(id: string): {timeseriesId: number; resultTime: Date; locationId?: number} {
+  // TODO: Use: hashIds(https://www.npmjs.com/package/hashids) instead.
   const firstSplit = nthIndex(id, '-', 1);
   const secondSplit = nthIndex(id, '-', 2);
   const components: any = {
