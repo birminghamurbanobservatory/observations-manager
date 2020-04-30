@@ -100,7 +100,7 @@ const columnsToSelectDuringJoin = [
   'observations.value_json',
   'observations.flags',
   'timeseries.made_by_sensor',
-  'timeseries.hasDeployment',
+  'timeseries.has_deployment',
   'timeseries.hosted_by_path',
   'timeseries.has_feature_of_interest',
   'timeseries.observed_property',
@@ -112,8 +112,8 @@ const columnsToSelectDuringJoin = [
   'locations.valid_at as location_valid_at'    
 ];
 
-const columnsToSelectDuringJoinCondensed = pullAll(columnsToSelectDuringJoin, [
-  'timeseries.hasDeployment',
+const columnsToSelectDuringJoinCondensed = pullAll(cloneDeep(columnsToSelectDuringJoin), [
+  'timeseries.has_deployment',
   'timeseries.hosted_by_path',
   'timeseries.has_feature_of_interest',
   'timeseries.observed_property',
@@ -200,7 +200,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         `${lateralDataAlias}.value_json`,
         `${lateralDataAlias}.flags`,
         `${selectedTimeseriesAlias}.made_by_sensor`,
-        `${selectedTimeseriesAlias}.hasDeployment`,
+        `${selectedTimeseriesAlias}.has_deployment`,
         `${selectedTimeseriesAlias}.hosted_by_path`,
         `${selectedTimeseriesAlias}.has_feature_of_interest`,
         `${selectedTimeseriesAlias}.observed_property`,
@@ -212,9 +212,9 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         `${lateralDataAlias}.location_valid_at` 
       ];
 
-      const onePerSelectColumnsCondensed = pullAll(onePerSelectColumns, [
+      const onePerSelectColumnsCondensed = pullAll(cloneDeep(onePerSelectColumns), [
         `${selectedTimeseriesAlias}.made_by_sensor`,
-        `${selectedTimeseriesAlias}.hasDeployment`,
+        `${selectedTimeseriesAlias}.has_deployment`,
         `${selectedTimeseriesAlias}.hosted_by_path`,
         `${selectedTimeseriesAlias}.has_feature_of_interest`,
         `${selectedTimeseriesAlias}.observed_property`,
@@ -873,6 +873,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
     throw new GetObservationsFail(undefined, err.message);
   }
 
+  console.log(observations);
   return observations.map(observationDbToApp);
 
 }
