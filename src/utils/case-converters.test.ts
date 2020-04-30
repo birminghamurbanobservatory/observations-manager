@@ -7,16 +7,16 @@ import {convertKeysToCamelCase, convertKeysToSnakeCase} from './case-converters'
 describe('Converting keys to camel case', () => {
 
   test('Converts from snake case', () => {
-    const input = {in_deployment: 6};
-    const expected = {inDeployment: 6};
+    const input = {has_deployment: 6};
+    const expected = {hasDeployment: 6};
     expect(convertKeysToCamelCase(input)).toEqual(expected);
   });
 
   test('Check it does not mutate the original object', () => {
-    const input = {in_deployment: 6};
-    const expected = {inDeployment: 6};
+    const input = {has_deployment: 6};
+    const expected = {hasDeployment: 6};
     expect(convertKeysToCamelCase(input)).toEqual(expected);
-    expect(input).toEqual({in_deployment: 6});
+    expect(input).toEqual({has_deployment: 6});
   });  
 
 });
@@ -25,16 +25,16 @@ describe('Converting keys to camel case', () => {
 describe('Converting keys to snake case', () => {
 
   test('Converts from camel case', () => {
-    const input = {inDeployment: 6};
-    const expected = {in_deployment: 6};
+    const input = {hasDeployment: 6};
+    const expected = {has_deployment: 6};
     expect(convertKeysToSnakeCase(input)).toEqual(expected);
   });
 
   test('Check it does not mutate the original object', () => {
-    const input = {inDeployment: 6};
-    const expected = {in_deployment: 6};
+    const input = {hasDeployment: 6};
+    const expected = {has_deployment: 6};
     expect(convertKeysToSnakeCase(input)).toEqual(expected);
-    expect(input).toEqual({inDeployment: 6});
+    expect(input).toEqual({hasDeployment: 6});
   });    
 
 });

@@ -8,7 +8,7 @@ export class ObservationApp {
   public hasResult?: Result;
   public phenomenonTime?: PhenomenonTime
   public resultTime?: Date;
-  public inDeployments?: string[];
+  public hasDeployment?: string;
   public hostedByPath?: string[];
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;

@@ -3,7 +3,7 @@ export class TimeseriesApp {
   public firstObs?: Date;
   public lastObs?: Date;
   public madeBySensor?: string;
-  public inDeployments?: string[];
+  public hasDeployment?: string;
   public hostedByPath?: string[];
   public unit?: string;
   public hasFeatureOfInterest?: string;

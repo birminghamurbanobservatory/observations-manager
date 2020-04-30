@@ -100,7 +100,7 @@ const columnsToSelectDuringJoin = [
   'observations.value_json',
   'observations.flags',
   'timeseries.made_by_sensor',
-  'timeseries.in_deployments',
+  'timeseries.hasDeployment',
   'timeseries.hosted_by_path',
   'timeseries.has_feature_of_interest',
   'timeseries.observed_property',
@@ -113,7 +113,7 @@ const columnsToSelectDuringJoin = [
 ];
 
 const columnsToSelectDuringJoinCondensed = pullAll(columnsToSelectDuringJoin, [
-  'timeseries.in_deployments',
+  'timeseries.hasDeployment',
   'timeseries.hosted_by_path',
   'timeseries.has_feature_of_interest',
   'timeseries.observed_property',
@@ -200,7 +200,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         `${lateralDataAlias}.value_json`,
         `${lateralDataAlias}.flags`,
         `${selectedTimeseriesAlias}.made_by_sensor`,
-        `${selectedTimeseriesAlias}.in_deployments`,
+        `${selectedTimeseriesAlias}.hasDeployment`,
         `${selectedTimeseriesAlias}.hosted_by_path`,
         `${selectedTimeseriesAlias}.has_feature_of_interest`,
         `${selectedTimeseriesAlias}.observed_property`,
@@ -214,7 +214,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
 
       const onePerSelectColumnsCondensed = pullAll(onePerSelectColumns, [
         `${selectedTimeseriesAlias}.made_by_sensor`,
-        `${selectedTimeseriesAlias}.in_deployments`,
+        `${selectedTimeseriesAlias}.hasDeployment`,
         `${selectedTimeseriesAlias}.hosted_by_path`,
         `${selectedTimeseriesAlias}.has_feature_of_interest`,
         `${selectedTimeseriesAlias}.observed_property`,
@@ -263,46 +263,26 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
             }
           }
 
-          // inDeployment
-          if (check.assigned(where.inDeployment)) {
-            if (check.nonEmptyString(where.inDeployment)) {
-              // Find any timeseries whose in_deployments array contains this one deployment (if there are others in the array then it will still match)
-              builder.where('timeseries.in_deployments', '&&', [where.inDeployment]);
+          // hasDeployment
+          if (check.assigned(where.hasDeployment)) {
+            if (check.nonEmptyString(where.hasDeployment)) {
+              builder.where('timeseries.has_deployment', where.hasDeployment);
             }
-            if (check.nonEmptyObject(where.inDeployment)) {
-              if (check.nonEmptyArray(where.inDeployment.in)) {
-                // i.e. looking for any overlap
-                builder.where('timeseries.in_deployments', '&&', where.inDeployment.in);
+            if (check.nonEmptyObject(where.hasDeployment)) {
+              if (check.nonEmptyArray(where.hasDeployment.in)) {
+                builder.whereIn('timeseries.has_deployment', where.hasDeployment.in);
               }
-              if (check.boolean(where.inDeployment.exists)) {
-                if (where.inDeployment.exists === true) {
-                  builder.whereNotNull('timeseries.in_deployments');
+              if (check.boolean(where.hasDeployment.exists)) {
+                if (where.hasDeployment.exists === true) {
+                  builder.whereNotNull('timeseries.has_deployment');
                 } 
-                if (where.inDeployment.exists === false) {
-                  builder.whereNull('timeseries.in_deployments');
-                }              
-              }
+                if (where.hasDeployment.exists === false) {
+                  builder.whereNull('timeseries.has_deployment');
+                }
+              }     
             }
-          }      
-
-          // inDeployments - for an exact match (after sorting alphabetically)
-          if (check.assigned(where.inDeployments)) {
-            if (check.nonEmptyArray(where.inDeployments)) {
-              builder.where('timeseries.in_deployments', sortBy(where.inDeployments));
-            }
-            if (check.nonEmptyObject(where.inDeployments)) {
-              // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
-              if (check.boolean(where.inDeployments.exists)) {
-                if (where.inDeployments.exists === true) {
-                  builder.whereNotNull('timeseries.in_deployments');
-                } 
-                if (where.inDeployments.exists === false) {
-                  builder.whereNull('timeseries.in_deployments');
-                }              
-              }
-            }
-          }      
-
+          }
+     
           // hostedByPath (used for finding exact matches)
           if (check.assigned(where.hostedByPath)) {
             if (check.nonEmptyArray(where.hostedByPath)) {
@@ -597,45 +577,25 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
           }
         }
 
-        // inDeployment
-        if (check.assigned(where.inDeployment)) {
-          if (check.nonEmptyString(where.inDeployment)) {
-            // Find any timeseries whose in_deployments array contains this one deployment (if there are others in the array then it will still match)
-            builder.where('timeseries.in_deployments', '&&', [where.inDeployment]);
+        // hasDeployment
+        if (check.assigned(where.hasDeployment)) {
+          if (check.nonEmptyString(where.hasDeployment)) {
+            builder.where('timeseries.has_deployment', where.hasDeployment);
           }
-          if (check.nonEmptyObject(where.inDeployment)) {
-            if (check.nonEmptyArray(where.inDeployment.in)) {
-              // i.e. looking for any overlap
-              builder.where('timeseries.in_deployments', '&&', where.inDeployment.in);
+          if (check.nonEmptyObject(where.hasDeployment)) {
+            if (check.nonEmptyArray(where.hasDeployment.in)) {
+              builder.whereIn('timeseries.has_deployment', where.hasDeployment.in);
             }
-            if (check.boolean(where.inDeployment.exists)) {
-              if (where.inDeployment.exists === true) {
-                builder.whereNotNull('timeseries.in_deployments');
+            if (check.boolean(where.hasDeployment.exists)) {
+              if (where.hasDeployment.exists === true) {
+                builder.whereNotNull('timeseries.has_deployment');
               } 
-              if (where.inDeployment.exists === false) {
-                builder.whereNull('timeseries.in_deployments');
-              }              
-            }
+              if (where.hasDeployment.exists === false) {
+                builder.whereNull('timeseries.has_deployment');
+              }
+            }     
           }
-        }      
-
-        // inDeployments - for an exact match (after sorting alphabetically)
-        if (check.assigned(where.inDeployments)) {
-          if (check.nonEmptyArray(where.inDeployments)) {
-            builder.where('timeseries.in_deployments', sortBy(where.inDeployments));
-          }
-          if (check.nonEmptyObject(where.inDeployments)) {
-            // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
-            if (check.boolean(where.inDeployments.exists)) {
-              if (where.inDeployments.exists === true) {
-                builder.whereNotNull('timeseries.in_deployments');
-              } 
-              if (where.inDeployments.exists === false) {
-                builder.whereNull('timeseries.in_deployments');
-              }              
-            }
-          }
-        }      
+        }
 
         // hostedByPath (used for finding exact matches)
         if (check.assigned(where.hostedByPath)) {
@@ -1050,7 +1010,7 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
 
   const props: any = pick(observation, [
     'madeBySensor',
-    'inDeployments',
+    'hasDeployment',
     'hostedByPath',
     'observedProperty',
     'hasFeatureOfInterest',

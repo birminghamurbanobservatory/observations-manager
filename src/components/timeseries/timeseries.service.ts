@@ -26,21 +26,20 @@ export async function createTimeseriesTable(): Promise<void> {
     table.timestamp('first_obs', {useTz: true}).notNullable();
     table.timestamp('last_obs', {useTz: true}).notNullable();
     table.string('made_by_sensor'); // I've made this nullable for the sake of derived observations with no sensor.
-    table.specificType('in_deployments', 'TEXT[]');
+    table.string('has_deployment');
     table.specificType('hosted_by_path', 'ltree');
     table.string('observed_property');
     table.string('unit');
     table.string('has_feature_of_interest');
     table.specificType('disciplines', 'TEXT[]');
     table.specificType('used_procedures', 'TEXT[]');
-
   });
 
   // TODO: Add some more indexes. Potentially incorporating the start_date and end_date.
   // Add a GIST index for hosted_by_path ltree column
   await knex.raw('CREATE INDEX timeseries_hosted_by_path_index ON timeseries USING GIST (hosted_by_path);');
-  // Add a GIN index for in_deployments
-  await knex.raw('CREATE INDEX timeseries_in_deployments_index ON timeseries USING GIN(in_deployments)');
+  // Add an index for the deployment
+  await knex.raw('CREATE INDEX has_deployment_index ON timeseries(has_deployment)');
 
   return;
 }
@@ -215,45 +214,27 @@ export async function findTimeseries(where: TimeseriesWhere, options: {limit?: n
         }
       }
 
-      // inDeployment
-      if (check.assigned(where.inDeployment)) {
-        if (check.nonEmptyString(where.inDeployment)) {
-          // Find any timeseries whose in_deployments array contains this one deployment (if there are others in the array then it will still match)
-          builder.where('in_deployments', '&&', [where.inDeployment]);
-        }
-        if (check.nonEmptyObject(where.inDeployment)) {
-          if (check.nonEmptyArray(where.inDeployment.in)) {
-            // i.e. looking for any overlap
-            builder.where('in_deployments', '&&', where.inDeployment.in);
-          }
-          if (check.boolean(where.inDeployment.exists)) {
-            if (where.inDeployment.exists === true) {
-              builder.whereNotNull('in_deployments');
-            } 
-            if (where.inDeployment.exists === false) {
-              builder.whereNull('in_deployments');
-            }              
-          }
-        }
-      }      
 
-      // inDeployments - for an exact match (after sorting alphabetically)
-      if (check.assigned(where.inDeployments)) {
-        if (check.nonEmptyArray(where.inDeployments)) {
-          builder.where('in_deployments', sortBy(where.inDeployments));
+      // hasDeployment
+      if (check.assigned(where.hasDeployment)) {
+        if (check.nonEmptyString(where.hasDeployment)) {
+          builder.where('has_deployment', where.hasDeployment);
         }
-        if (check.nonEmptyObject(where.inDeployments)) {
-          // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
-          if (check.boolean(where.inDeployments.exists)) {
-            if (where.inDeployments.exists === true) {
-              builder.whereNotNull('in_deployments');
-            } 
-            if (where.inDeployments.exists === false) {
-              builder.whereNull('in_deployments');
-            }              
+        if (check.nonEmptyObject(where.hasDeployment)) {
+          if (check.nonEmptyArray(where.hasDeployment.in)) {
+            builder.whereIn('has_deployment', where.hasDeployment.in);
           }
+          if (check.boolean(where.hasDeployment.exists)) {
+            if (where.hasDeployment.exists === true) {
+              builder.whereNotNull('has_deployment');
+            } 
+            if (where.hasDeployment.exists === false) {
+              builder.whereNull('has_deployment');
+            }
+          }     
         }
-      }      
+      }
+ 
 
       // hostedByPath (used for finding exact matches)
       if (check.assigned(where.hostedByPath)) {
@@ -364,7 +345,6 @@ export async function findTimeseries(where: TimeseriesWhere, options: {limit?: n
       // discipline
       if (check.assigned(where.discipline)) {
         if (check.nonEmptyString(where.discipline)) {
-          // Find any timeseries whose in_deployments array contains this one deployment (if there are others in the array then it will still match)
           builder.where('disciplines', '&&', [where.discipline]);
         }
         if (check.nonEmptyObject(where.discipline)) {
@@ -462,7 +442,7 @@ export async function findTimeseries(where: TimeseriesWhere, options: {limit?: n
 export async function findSingleMatchingTimeseries(where: TimeseriesWhere): Promise<TimeseriesApp | void> {
 
   // Let's check every property we'll match by has been specified
-  const requiredProps = ['madeBySensor', 'inDeployments', 'hostedByPath', 'observedProperty', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
+  const requiredProps = ['madeBySensor', 'hasDeployment', 'hostedByPath', 'observedProperty', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
   requiredProps.forEach((prop) => {
     if (check.not.assigned(where[prop])) {
       throw new Error(`The '${prop} property of the where object must be assigned.'`);
@@ -490,9 +470,9 @@ export async function findSingleMatchingTimeseries(where: TimeseriesWhere): Prom
 export function convertPropsToExactWhere(props: TimeseriesProps): any {
 
   const findQuery: any = {};
-  const potentialProps = ['madeBySensor', 'inDeployments', 'hostedByPath', 'observedProperty', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
-  const orderNotImportantProps = ['inDeployments', 'disciplines'];
-  // For the inDeployments and disciplines array the order has no meaning, and thus we should sort the array just in case they are every provided in a different order at some point.
+  const potentialProps = ['madeBySensor', 'hasDeployment', 'hostedByPath', 'observedProperty', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
+  const orderNotImportantProps = ['disciplines'];
+  // For the disciplines array the order has no meaning, and thus we should sort the array just in case they are every provided in a different order at some point.
 
   potentialProps.forEach((propKey) => {
 
@@ -538,11 +518,6 @@ export function timeseriesAppToDb(timeseriesApp: TimeseriesApp): TimeseriesDb {
     timeseriesDb.hosted_by_path = arrayToLtreeString(timeseriesDb.hosted_by_path);
   }
 
-  // Make sure inDeployments is sorted, makes it easier to search for exact matches.
-  if (timeseriesDb.in_deployments) {
-    timeseriesDb.in_deployments = sortBy(timeseriesDb.in_deployments);
-  }
-
   return timeseriesDb;
 
 }
@@ -550,7 +525,6 @@ export function timeseriesAppToDb(timeseriesApp: TimeseriesApp): TimeseriesDb {
 
 
 export function timeseriesDbToApp(timeseriesDb: TimeseriesDb): TimeseriesApp {
-  // TODO: For some reason stripNullProperties is changing {inDeployments: ['something']} to undefined. 
   const timeseriesApp = convertKeysToCamelCase(stripNullProperties(timeseriesDb));
   if (timeseriesApp.hostedByPath) {
     timeseriesApp.hostedByPath = ltreeStringToArray(timeseriesApp.hostedByPath);

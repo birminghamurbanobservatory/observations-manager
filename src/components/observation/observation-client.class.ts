@@ -7,7 +7,7 @@ export class ObservationClient {
   public hasResult?: Result;
   public resultTime?: string;
   public phenomenonTime?: PhenomenonTime;
-  public inDeployments?: string[];
+  public hasDeployment?: string;
   public hostedByPath?: string[];
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;

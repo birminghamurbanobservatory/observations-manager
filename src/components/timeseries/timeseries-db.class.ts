@@ -3,7 +3,7 @@ export class TimeseriesDb {
   public first_obs?: any;
   public last_obs?: any;
   public made_by_sensor?: string;
-  public in_deployments?: string[];
+  public has_deployment?: string;
   public hosted_by_path?: string;
   // TODO: Need to have isHostedBy here too? For the sake of observation locations updates?
   public observed_property?: string;

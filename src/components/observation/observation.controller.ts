@@ -35,7 +35,7 @@ const createObservationSchema = joi.object({
     hasBeginning: joi.string().isoDate(),
     hasEnd: joi.string().isoDate()
   }),
-  inDeployments: joi.array().min(1).items(joi.string()),
+  hasDeployment: joi.string(),
   hostedByPath: joi.array().min(1).items(joi.string()),
   hasFeatureOfInterest: joi.string(),
   observedProperty: joi.string(), // TODO: Add a PascalCase regex?
@@ -213,17 +213,10 @@ const getObservationsWhereSchema = joi.object({
       in: joi.array().items(joi.string()).min(1).required()
     })
   ),
-  inDeployment: joi.alternatives().try(
-    joi.string(), // find obs that belong to this deployment (may belong to more)
+  hasDeployment: joi.alternatives().try(
+    joi.string(), // find obs that belong to this deployment
     joi.object({
       in: joi.array().items(joi.string()).min(1), // obs that belong to any of these deployments
-      exists: joi.boolean()
-    }).min(1)
-  ),
-  inDeployments: joi.alternatives().try(
-    joi.array().items(joi.string()).min(1),
-    joi.object({
-      // don't yet support 'in' here.
       exists: joi.boolean()
     }).min(1)
   ),

@@ -58,10 +58,10 @@ describe('Test stripNullProperties function', () => {
 
   test('Does not mess up arrays', () => {
     const input = { 
-      in_deployments: ['deployment-1']
+      disciplines: ['Meteorology']
     };
     const expected = {
-      in_deployments: ['deployment-1'],      
+      disciplines: ['Meteorology'],      
     };
     const output = stripNullProperties(input);
     expect(output).toEqual(expected);

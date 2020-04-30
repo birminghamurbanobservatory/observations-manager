@@ -2,8 +2,7 @@ export class ObservationsWhere {
   public resultTime?: ResultTime;
   public timeseriesId?: any;
   public madeBySensor?: any; // i'd like to write this as "string | InObject" but I end up with issues.
-  public inDeployment?: any;
-  public inDeployments?: any;
+  public hasDeployment?: any;
   public hostedByPath?: any; // for exact matches
   public isHostedBy?: any; // for when the platform id can occur anywhere in the path
   public hostedByPathSpecial?: any; // allows lquery syntax

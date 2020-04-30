@@ -33,7 +33,7 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
         unit: 'DegreeCelsius'
       },
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature',
@@ -42,7 +42,7 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
     };
     const expected = {
       madeBySensor: 'sensor-123',
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
@@ -113,7 +113,7 @@ describe('observationClientToApp function tests', () => {
         value: 12
       },
       resultTime: '2019-12-04T17:26:23.205Z',
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
@@ -126,7 +126,7 @@ describe('observationClientToApp function tests', () => {
         value: 12
       },
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
@@ -150,7 +150,7 @@ describe('observationClientToApp function tests', () => {
         hasBeginning: '2019-12-04T17:16:23.205Z',
         hasEnd: '2019-12-04T17:26:23.205Z'
       },
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth'
@@ -166,7 +166,7 @@ describe('observationClientToApp function tests', () => {
         hasBeginning: new Date('2019-12-04T17:16:23.205Z'),
         hasEnd: new Date('2019-12-04T17:26:23.205Z')
       },
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth'
@@ -194,7 +194,7 @@ describe('observationAppToClient function tests', () => {
         value: 12
       },
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
@@ -208,7 +208,7 @@ describe('observationAppToClient function tests', () => {
         value: 12
       },
       resultTime: '2019-12-04T17:26:23.205Z',
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
@@ -239,7 +239,7 @@ describe('observationAppToClient function tests', () => {
         hasBeginning: new Date('2019-12-04T17:16:23.205Z'),
         hasEnd: new Date('2019-12-04T17:26:23.205Z')
       },
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth'
@@ -256,7 +256,7 @@ describe('observationAppToClient function tests', () => {
         hasBeginning: '2019-12-04T17:16:23.205Z',
         hasEnd: '2019-12-04T17:26:23.205Z'
       },
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth'
@@ -287,7 +287,7 @@ describe('observationDbToApp function tests', () => {
       value_json: null,
       flags: null,
       made_by_sensor: 'rain-gauge-123',
-      in_deployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hosted_by_path: 'bob-back-garden.platform-1',
       has_feature_of_interest: 'EarthAtmosphere',
       observed_property: 'precipitation-depth',
@@ -309,7 +309,7 @@ describe('observationDbToApp function tests', () => {
         value: 0.3
       },
       madeBySensor: 'rain-gauge-123',
-      inDeployments: ['deployment-1'],
+      hasDeployment: 'deployment-1',
       hostedByPath: ['bob-back-garden', 'platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth',

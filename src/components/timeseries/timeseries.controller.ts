@@ -53,17 +53,10 @@ const getMultipleTimeseriesWhereSchema = joi.object({
       in: joi.array().items(joi.string()).min(1).required()
     })
   ),
-  inDeployment: joi.alternatives().try(
+  hasDeployment: joi.alternatives().try(
     joi.string(), // find obs that belong to this deployment (may belong to more)
     joi.object({
       in: joi.array().items(joi.string()).min(1), // obs that belong to any of these deployments
-      exists: joi.boolean()
-    }).min(1)
-  ),
-  inDeployments: joi.alternatives().try(
-    joi.array().items(joi.string()).min(1),
-    joi.object({
-      // don't yet support 'in' here.
       exists: joi.boolean()
     }).min(1)
   ),
