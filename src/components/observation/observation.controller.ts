@@ -331,7 +331,7 @@ const getObservationsWhereSchema = joi.object({
 // Decided not to have a minimum number of keys here, i.e. so that superusers or other microservices can get observations without limitations. The limitation will come from a pagination approach, whereby only so many observations can be returned per request.
 
 const getObservationsOptionsSchema = joi.object({
-  // TODO: Add the option to return a condensed set of observations, i.e. without all the duplicated timeseries data included. E.g. have a boolean 'condense' option. Then make sure we only SELECT these columns from the database.
+  condense: joi.boolean(), // when true far less properties are included, e.g. all the timeseries properties are left out.
   limit: joi.number()
     .integer()
     .positive()

@@ -1,6 +1,6 @@
 import {ObservationCore} from './observation-core.class';
 import {ObservationApp} from './observation-app.class';
-import {pick, cloneDeep, sortBy} from 'lodash';
+import {pick, cloneDeep, sortBy, pullAll} from 'lodash';
 import {TimeseriesProps} from '../timeseries/timeseries-props.class';
 import {ObservationClient} from './observation-client.class';
 import {ObservationDb} from './observation-db.class';
@@ -112,6 +112,16 @@ const columnsToSelectDuringJoin = [
   'locations.valid_at as location_valid_at'    
 ];
 
+const columnsToSelectDuringJoinCondensed = pullAll(columnsToSelectDuringJoin, [
+  'timeseries.in_deployments',
+  'timeseries.hosted_by_path',
+  'timeseries.has_feature_of_interest',
+  'timeseries.observed_property',
+  'timeseries.unit',
+  'timeseries.disciplines',
+  'timeseries.used_procedures',
+]);
+
 
 //-------------------------------------------------
 // Get Observation
@@ -149,7 +159,7 @@ export async function getObservationByClientId(id: string): Promise<ObservationA
 }
 
 
-export async function getObservations(where: ObservationsWhere, options: {limit?: number; offset?: number; onePer: string; sortBy: string; sortOrder: string}): Promise<ObservationApp[]> {
+export async function getObservations(where: ObservationsWhere, options: {limit?: number; offset?: number; onePer: string; sortBy: string; sortOrder: string; condense: boolean}): Promise<ObservationApp[]> {
 
   // If the request is for "onePer" then it ends up being a fundamentally different SQL query, because we need to use a lateral join instead.
   const onePerEnabled = check.assigned(options.onePer);
@@ -177,9 +187,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
 
       const extraClauses = buildExtraOnPerClauses(where);
 
-      observations = await knex
-      .select([
-        // You'll want the returned columns to be the same as for a normal non-onePer query.
+      const onePerSelectColumns = [
         `${lateralDataAlias}.id`,
         `${lateralDataAlias}.timeseries as timeseries_id`,
         `${lateralDataAlias}.location as location_id`,
@@ -202,7 +210,21 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         `${lateralDataAlias}.location_client_id`,
         `${lateralDataAlias}.location_geojson`,
         `${lateralDataAlias}.location_valid_at` 
-      ])
+      ];
+
+      const onePerSelectColumnsCondensed = pullAll(onePerSelectColumns, [
+        `${selectedTimeseriesAlias}.made_by_sensor`,
+        `${selectedTimeseriesAlias}.in_deployments`,
+        `${selectedTimeseriesAlias}.hosted_by_path`,
+        `${selectedTimeseriesAlias}.has_feature_of_interest`,
+        `${selectedTimeseriesAlias}.observed_property`,
+        `${selectedTimeseriesAlias}.unit`,
+        `${selectedTimeseriesAlias}.disciplines`,
+        `${selectedTimeseriesAlias}.used_procedures`,
+      ]);
+      
+      observations = await knex
+      .select(options.condense ? onePerSelectColumnsCondensed : onePerSelectColumns)
       .distinctOn(`${selectedTimeseriesAlias}.${distinctByColumn}`)
       .from(function() {
         this.select('*').from('timeseries')
@@ -516,7 +538,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
       } 
 
       observations = await knex('observations')
-      .select(columnsToSelectDuringJoin)
+      .select(options.condense ? columnsToSelectDuringJoinCondensed : columnsToSelectDuringJoin)
       .leftJoin('timeseries', 'observations.timeseries', 'timeseries.id')
       .leftJoin('locations', 'observations.location', 'locations.id')
       .where((builder) => {
