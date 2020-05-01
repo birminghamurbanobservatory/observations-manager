@@ -16,6 +16,7 @@ import {UpdateTimeseriesFail} from './errors/UpdateTimeseriesFail';
 import {CreateTimeseriesFail} from './errors/CreateTimeseriesFail';
 import hasher from '../../utils/hasher';
 import {TimeseriesClient} from './timeseries-client.class';
+import {arrayToPostgresArrayString} from '../../utils/postgresql-helpers';
 
 
 
@@ -366,7 +367,7 @@ export async function findTimeseries(where: TimeseriesWhere, options: {limit?: n
       // disciplines - for an exact match (after sorting alphabetically)
       if (check.assigned(where.disciplines)) {
         if (check.nonEmptyArray(where.disciplines)) {
-          builder.where('disciplines', sortBy(where.disciplines));
+          builder.where('disciplines', where.disciplines);
         }
         if (check.nonEmptyObject(where.disciplines)) {
           // Don't yet support the 'in' property here, as not sure how to do an IN with any array of arrays.
@@ -472,7 +473,7 @@ export function convertPropsToExactWhere(props: TimeseriesProps): any {
   const findQuery: any = {};
   const potentialProps = ['madeBySensor', 'hasDeployment', 'hostedByPath', 'observedProperty', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
   const orderNotImportantProps = ['disciplines'];
-  // For the disciplines array the order has no meaning, and thus we should sort the array just in case they are every provided in a different order at some point.
+  // For the disciplines array the order has no meaning, and thus we should sort the array just in case they are every provided in a different order at some point. It's crucial these array properties are also sorted in the same order before saving a new timeseries row.
 
   potentialProps.forEach((propKey) => {
 
@@ -517,6 +518,15 @@ export function timeseriesAppToDb(timeseriesApp: TimeseriesApp): TimeseriesDb {
   if (timeseriesDb.hosted_by_path) {
     timeseriesDb.hosted_by_path = arrayToLtreeString(timeseriesDb.hosted_by_path);
   }
+
+  // Make sure that any array fields, where the order has no meaning, are sorted.
+  const orderNotImportantProps = ['disciplines'];
+  orderNotImportantProps.forEach((prop) => {
+    if (check.assigned(timeseriesDb[prop])) {
+      timeseriesDb[prop] = sortBy(timeseriesDb[prop]);
+    }
+  });
+
 
   return timeseriesDb;
 
