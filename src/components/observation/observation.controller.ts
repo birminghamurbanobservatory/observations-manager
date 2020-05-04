@@ -17,6 +17,7 @@ import * as check from 'check-types';
 import {kebabCaseRegex} from '../../utils/regular-expressions';
 import hasher from '../../utils/hasher';
 
+
 const maxObsPerRequest = config.obs.maxPerRequest;
 
 
@@ -95,8 +96,19 @@ export async function createObservation(observation: ObservationClient): Promise
       if (check.not.assigned(locationFromObs.validAt)) {
         locationFromObs.validAt = new Date(observation.resultTime);
       }
-      matchingLocation = await createLocation(locationFromObs);
-      logger.debug('New location created', matchingLocation);
+      // I have seen some race condition errors, e.g. when new Netatmo stations come online, because observations arrive at the same time, all with the same client id and it ends up trying to create a location just after it's already been created by the observation that arrived a split second earlier. The catch here should account for this.
+      try {
+        matchingLocation = await createLocation(locationFromObs);
+        logger.debug('New location created', matchingLocation);
+      } catch (err) {
+        if (err.name === 'LocationAlreadyExists' && locationFromObs.clientId) {
+          logger.debug(`A LocationAlreadyExists error was thrown whilst creating a location with client id '${locationFromObs.clientId}', probably because of a race condition. The location should therefore now be saved, so we'll try to get it instead.`);
+          matchingLocation = await getLocationByClientId(locationFromObs.clientId);
+          logger.debug(`Managed to get the location with client id ${matchingLocation.clientId} (following race condition catch)`);
+        } else {
+          throw err;
+        }
+      }
     }
   }
 

@@ -54,7 +54,7 @@ export async function createObservationsTable(): Promise<void> {
   // By default this will create an index called observations_result_time_idx, according to the TimescaleDB tech team it's worth keeping this index even though I create another below that'll use far more often. 
   // N.B. if you want a custom primary key, or a unique index, then you must include the result_time.
   // docs: https://docs.timescale.com/latest/using-timescaledb/schema-management#indexing
-  await knex.raw('CREATE UNIQUE INDEX timeseries_spatiotemporal_uniq_idx ON observations (timeseries, result_time, location DESC)');
+  await knex.raw('CREATE UNIQUE INDEX timeseries_spatiotemporal_uniq_idx ON observations (timeseries, result_time, COALESCE(location, 0) DESC)');
   // N.B. we need the COALESCE for instances when no location is provided, i.e. the column stores a NULL value. Without it two identical locationless observations wouldn't trigger a duplicate error, because NULL counts as distinct each time.
 
   return;

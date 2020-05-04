@@ -9,6 +9,7 @@ import {stripNullProperties} from '../../utils/strip-null-properties';
 import {LocationDb} from './location-db.class';
 import {CreateLocationFail} from './errors/CreateLocationFail';
 import {v4 as uuid} from 'uuid';
+import {LocationAlreadyExists} from './errors/LocationAlreadyExists';
 
 
 
@@ -75,7 +76,12 @@ export async function createLocation(location: LocationApp): Promise<LocationApp
     .returning('*');
     createdLocation = result[0];
   } catch (err) {
-    throw new CreateLocationFail(undefined, err.message);
+    if (err.code === '23505') {
+      // I'm assuming it's a client id clash that will cause this.
+      throw new LocationAlreadyExists(`A location with this client id already exists`);
+    } else {
+      throw new CreateLocationFail(undefined, err.message);
+    }
   }  
 
   return locationDbToApp(createdLocation);
