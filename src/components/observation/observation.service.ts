@@ -873,7 +873,6 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
     throw new GetObservationsFail(undefined, err.message);
   }
 
-  console.log(observations);
   return observations.map(observationDbToApp);
 
 }
