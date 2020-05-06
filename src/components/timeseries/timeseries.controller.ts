@@ -13,7 +13,7 @@ import {BadRequest} from '../../errors/BadRequest';
 export async function getSingleTimeseries(clientId: string): Promise<TimeseriesClient> {
 
   // Decode the hashed id.
-  const databaseId = Number(hasher.decode(clientId));
+  const databaseId = timeseriesService.decodeTimeseriesId(clientId);
   logger.debug(`Getting timeseries with database id '${databaseId}' (clientId: ${clientId})`);
 
   const timeseries = await timeseriesService.getTimeseries(databaseId);
@@ -166,7 +166,7 @@ export async function getMultipleTimeseries(where = {}, options = {}): Promise<{
   if (whereErr) throw new BadRequest(optionsErr.message);
 
   if (whereValidated.id && whereValidated.id.in) {
-    whereValidated.id.in = whereValidated.id.in.map((clientId) => Number(hasher.decode(clientId)));
+    whereValidated.id.in = whereValidated.id.in.map(timeseriesService.decodeTimeseriesId);
   }
 
   const timeseries = await timeseriesService.findTimeseries(whereValidated, optionsValidated);

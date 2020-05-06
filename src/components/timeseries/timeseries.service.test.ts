@@ -1,7 +1,8 @@
-import {convertPropsToExactWhere, timeseriesAppToDb} from './timeseries.service';
+import {convertPropsToExactWhere, timeseriesAppToDb, encodeTimeseriesId, decodeTimeseriesId} from './timeseries.service';
 import {TimeseriesApp} from './timeseries-app.class';
 import {TimeseriesDb} from './timeseries-db.class';
-
+import * as check from 'check-types';
+import {InvalidTimeseriesId} from './errors/InvalidTimeseriesId';
 
 describe('Testing of convertPropsToExactWhere function', () => {
 
@@ -129,5 +130,27 @@ describe('Testing of convertPropsToExactWhere function', () => {
   
   });
 
+
+});
+
+
+
+describe('Testing of timeseries id encoding and decoding function', () => {
+
+  test('Should encode and decode and get the same component values back (with input resultTime as string)', () => {
+    const timeseriesId = 543;
+    const encoded = encodeTimeseriesId(timeseriesId);
+    expect(check.nonEmptyString(encoded)).toBe(true);
+    const decoded = decodeTimeseriesId(encoded);
+    const expected = 543;
+    expect(decoded).toEqual(expected);
+  });
+
+  test('Should throw an error if you give it a really random string to try and decode', () => {
+    const clientId = 'fhyewgrYEHEYHUUEIDJJE333333';
+    expect(() => {
+      const result = decodeTimeseriesId(clientId);
+    }).toThrowError(InvalidTimeseriesId);
+  });  
 
 });

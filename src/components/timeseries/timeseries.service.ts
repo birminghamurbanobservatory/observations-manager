@@ -17,6 +17,7 @@ import {CreateTimeseriesFail} from './errors/CreateTimeseriesFail';
 import hasher from '../../utils/hasher';
 import {TimeseriesClient} from './timeseries-client.class';
 import {arrayToPostgresArrayString} from '../../utils/postgresql-helpers';
+import {InvalidTimeseriesId} from './errors/InvalidTimeseriesId';
 
 
 
@@ -566,8 +567,24 @@ export function timeseriesDbToApp(timeseriesDb: TimeseriesDb): TimeseriesApp {
 
 export function timeseriesAppToClient(timeseriesApp: TimeseriesApp): TimeseriesClient {
   const timeseriesClient: any = cloneDeep(timeseriesApp); 
-  timeseriesClient.id = hasher.encode(timeseriesClient.id);
+  timeseriesClient.id = encodeTimeseriesId(timeseriesClient.id);
   timeseriesClient.firstObs = timeseriesClient.firstObs.toISOString();
   timeseriesClient.lastObs = timeseriesClient.lastObs.toISOString();
   return timeseriesClient;
+}
+
+
+export function encodeTimeseriesId(databaseId: number): string {
+  const encoded = hasher.encode(databaseId);
+  return encoded;
+}
+
+
+export function decodeTimeseriesId(clientId): number {
+  const decodedId = Number(hasher.decode(clientId));
+  // If a client just enters a random string, this .decode method will typically return 0.
+  if (decodedId < 1) {
+    throw new InvalidTimeseriesId;
+  }
+  return decodedId;
 }

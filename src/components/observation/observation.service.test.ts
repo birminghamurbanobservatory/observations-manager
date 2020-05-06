@@ -1,5 +1,6 @@
 import {extractTimeseriesPropsFromObservation, generateObservationId, deconstructObservationId, observationAppToClient, observationClientToApp, observationDbToApp, buildObservationDb} from './observation.service';
 import * as check from 'check-types';
+import {InvalidObservationId} from './errors/InvalidObservationId';
 
 
 describe('Testing of extractTimeseriesPropsFromObservation function', () => {
@@ -75,6 +76,7 @@ describe('Testing of generateObservationId function', () => {
     expect(decoded).toEqual(expected);
   });
 
+
   test('Should encode and decode and get the same component values back (with input resultTime as date)', () => {
     const timeseriesId = 543;
     const resultTime = new Date('2019-12-06T14:57:18.838Z');
@@ -87,6 +89,7 @@ describe('Testing of generateObservationId function', () => {
     };
     expect(decoded).toEqual(expected);
   });  
+
 
   test('Should encode and decode and get the same component values back when a location is included', () => {
     const timeseriesId = 543;
@@ -102,6 +105,14 @@ describe('Testing of generateObservationId function', () => {
     };
     expect(decoded).toEqual(expected);
   });
+
+
+  test('Should throw an error if you give it a really random string to try and decode', () => {
+    const clientId = 'fhyewgrYEHEYHUUEIDJJE333333';
+    expect(() => {
+      deconstructObservationId(clientId);
+    }).toThrowError(InvalidObservationId);
+  });  
 
 });
 

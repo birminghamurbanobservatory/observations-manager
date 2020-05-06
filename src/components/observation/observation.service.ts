@@ -18,6 +18,7 @@ import {locationAppToClient} from '../location/location.service';
 import {ltreeStringToArray, platformIdToAnywhereLquery, arrayToLtreeString} from '../../db/db-helpers';
 import knexPostgis from 'knex-postgis';
 import hasher from '../../utils/hasher';
+import {InvalidObservationId} from './errors/InvalidObservationId';
 
 const st = knexPostgis(knex);
 
@@ -1123,6 +1124,10 @@ export function generateObservationId(timeseriesId: number, resultTime: string |
 
 export function deconstructObservationId(id: string): {timeseriesId: number; resultTime: Date; locationId?: number} {
   const [resultTimeInMilliseconds, timeseriesId, locationId] = hasher.decode(id);
+
+  if (!resultTimeInMilliseconds || !timeseriesId) {
+    throw new InvalidObservationId(`Invalid observation id: '${id}'`);
+  }
 
   const components: any = {
     resultTime: new Date(Number(resultTimeInMilliseconds)),

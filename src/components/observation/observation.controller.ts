@@ -1,7 +1,7 @@
 import {ObservationClient} from './observation-client.class';
 import {extractTimeseriesPropsFromObservation, extractCoreFromObservation, observationClientToApp, observationAppToClient} from './observation.service';
 import * as observationService from '../observation/observation.service';
-import {findSingleMatchingTimeseries, convertPropsToExactWhere, updateTimeseries, createTimeseries} from '../timeseries/timeseries.service';
+import {findSingleMatchingTimeseries, convertPropsToExactWhere, updateTimeseries, createTimeseries, decodeTimeseriesId} from '../timeseries/timeseries.service';
 import * as logger from 'node-logger';
 import * as joi from '@hapi/joi';
 import {BadRequest} from '../../errors/BadRequest';
@@ -344,10 +344,10 @@ export async function getObservations(where = {}, options = {}): Promise<{data: 
 
   if (check.assigned(whereValidated.timeseriesId)) {
     if (check.string(whereValidated.timeseriesId)) {
-      whereValidated.timeseriesId = Number(hasher.decode(whereValidated.timeseriesId));
+      whereValidated.timeseriesId = decodeTimeseriesId(whereValidated.timeseriesId);
     }
     if (check.array(whereValidated.timeseriesId.in)) {
-      whereValidated.timeseriesId.in = whereValidated.timeseriesId.in.map((clientId) => Number(hasher.decode(clientId)));
+      whereValidated.timeseriesId.in = whereValidated.timeseriesId.in.map(decodeTimeseriesId);
     }
   }
 
