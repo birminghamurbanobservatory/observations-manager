@@ -11,6 +11,7 @@ export class ObservationClient {
   public hostedByPath?: string[];
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;
+  public aggregation?: string;
   public disciplines?: string[];
   public usedProcedures?: string[];
   public location?: LocationClient
@@ -25,4 +26,5 @@ class Result {
 class PhenomenonTime {
   hasBeginning: string;
   hasEnd: string;
+  duration: number;
 }

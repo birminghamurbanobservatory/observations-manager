@@ -30,17 +30,18 @@ export async function createTimeseriesTable(): Promise<void> {
     table.string('has_deployment');
     table.specificType('hosted_by_path', 'ltree');
     table.string('observed_property');
+    table.string('aggregation'); // decided string offered more flexibility than an enum.
     table.string('unit');
     table.string('has_feature_of_interest');
     table.specificType('disciplines', 'TEXT[]');
     table.specificType('used_procedures', 'TEXT[]');
   });
 
-  // TODO: Add some more indexes. Potentially incorporating the start_date and end_date.
   // Add a GIST index for hosted_by_path ltree column
   await knex.raw('CREATE INDEX timeseries_hosted_by_path_index ON timeseries USING GIST (hosted_by_path);');
-  // Add an index for the deployment
-  await knex.raw('CREATE INDEX has_deployment_index ON timeseries(has_deployment)');
+  // This index should come in handy for queries wanting to display observations on a map.
+  await knex.raw('CREATE INDEX index_for_map_queries ON timeseries(has_deployment, observed_property, aggregation)');
+  // Any more indexes worth adding? E.g. worth having any with the first_obs and last_obs included?
 
   return;
 }
@@ -303,6 +304,26 @@ export async function findTimeseries(where: TimeseriesWhere, options: {limit?: n
         }
       }
 
+      // aggregation
+      if (check.assigned(where.aggregation)) {
+        if (check.nonEmptyString(where.aggregation)) {
+          builder.where('aggregation', where.aggregation);
+        }
+        if (check.nonEmptyObject(where.aggregation)) {
+          if (check.nonEmptyArray(where.aggregation.in)) {
+            builder.whereIn('aggregation', where.aggregation.in);
+          }
+          if (check.boolean(where.aggregation.exists)) {
+            if (where.aggregation.exists === true) {
+              builder.whereNotNull('aggregation');
+            } 
+            if (where.aggregation.exists === false) {
+              builder.whereNull('aggregation');
+            }
+          }     
+        }
+      }
+
       // unit
       if (check.assigned(where.unit)) {
         if (check.nonEmptyString(where.unit)) {
@@ -443,7 +464,7 @@ export async function findTimeseries(where: TimeseriesWhere, options: {limit?: n
 export async function findSingleMatchingTimeseries(where: TimeseriesWhere): Promise<TimeseriesApp | void> {
 
   // Let's check every property we'll match by has been specified
-  const requiredProps = ['madeBySensor', 'hasDeployment', 'hostedByPath', 'observedProperty', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
+  const requiredProps = ['madeBySensor', 'hasDeployment', 'hostedByPath', 'observedProperty', 'aggregation', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
   requiredProps.forEach((prop) => {
     if (check.not.assigned(where[prop])) {
       throw new Error(`The '${prop} property of the where object must be assigned.'`);
@@ -471,7 +492,7 @@ export async function findSingleMatchingTimeseries(where: TimeseriesWhere): Prom
 export function convertPropsToExactWhere(props: TimeseriesProps): any {
 
   const findQuery: any = {};
-  const potentialProps = ['madeBySensor', 'hasDeployment', 'hostedByPath', 'observedProperty', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
+  const potentialProps = ['madeBySensor', 'hasDeployment', 'hostedByPath', 'observedProperty', 'aggregation', 'unit', 'hasFeatureOfInterest', 'disciplines', 'usedProcedures'];
   const orderNotImportantProps = ['disciplines'];
   // For the disciplines array the order has no meaning, and thus we should sort the array just in case they are every provided in a different order at some point. It's crucial these array properties are also sorted in the same order before saving a new timeseries row.
 

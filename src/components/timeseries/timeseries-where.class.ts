@@ -15,6 +15,7 @@ export class TimeseriesWhere {
   public unit: any;
   public hasFeatureOfInterest?: any;
   public observedProperty?: any;
+  public aggregation?: any;
   public discipline?: any;
   public disciplines?: any;
   public usedProcedure?: any;

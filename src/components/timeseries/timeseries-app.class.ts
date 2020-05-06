@@ -8,6 +8,7 @@ export class TimeseriesApp {
   public unit?: string;
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;
+  public aggregation?: string;
   public disciplines?: string[];
   public usedProcedures?: string[];
 }

@@ -1,4 +1,4 @@
-import {extractTimeseriesPropsFromObservation, generateObservationId, deconstructObservationId, observationAppToClient, observationClientToApp, observationDbToApp} from './observation.service';
+import {extractTimeseriesPropsFromObservation, generateObservationId, deconstructObservationId, observationAppToClient, observationClientToApp, observationDbToApp, buildObservationDb} from './observation.service';
 import * as check from 'check-types';
 
 
@@ -13,12 +13,14 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature',
+      aggregation: 'Instant',
       disciplines: ['Meteorology']
     };
     const expected = {
       madeBySensor: 'sensor-123',
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature',
+      aggregation: 'Instant',
       disciplines: ['Meteorology']     
     };
     expect(extractTimeseriesPropsFromObservation(observation)).toEqual(expected);
@@ -37,6 +39,7 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature',
+      aggregation: 'Instant',
       disciplines: ['Meteorology'],
       usedProcedures: ['PointSample']
     };
@@ -46,6 +49,7 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
+      aggregation: 'Instant',
       unit: 'DegreeCelsius',
       disciplines: ['Meteorology'],
       usedProcedures: ['PointSample']      
@@ -117,6 +121,7 @@ describe('observationClientToApp function tests', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
+      aggregation: 'Instant',
       usedProcedures: ['PointSample']
     };
 
@@ -130,6 +135,7 @@ describe('observationClientToApp function tests', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
+      aggregation: 'Instant',
       usedProcedures: ['PointSample']
     };
 
@@ -148,12 +154,14 @@ describe('observationClientToApp function tests', () => {
       resultTime: '2019-12-04T17:26:23.205Z',
       phenomenonTime: {
         hasBeginning: '2019-12-04T17:16:23.205Z',
-        hasEnd: '2019-12-04T17:26:23.205Z'
+        hasEnd: '2019-12-04T17:26:23.205Z',
+        duration: 600
       },
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'precipitation-depth'
+      observedProperty: 'precipitation-depth',
+      aggregation: 'Sum'
     };
 
     const expected = {
@@ -164,12 +172,14 @@ describe('observationClientToApp function tests', () => {
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       phenomenonTime: {
         hasBeginning: new Date('2019-12-04T17:16:23.205Z'),
-        hasEnd: new Date('2019-12-04T17:26:23.205Z')
+        hasEnd: new Date('2019-12-04T17:26:23.205Z'),
+        duration: 600
       },
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'precipitation-depth'
+      observedProperty: 'precipitation-depth',
+      aggregation: 'Sum',
     };
 
     const observationApp = observationClientToApp(observationClient);
@@ -198,6 +208,7 @@ describe('observationAppToClient function tests', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
+      aggregation: 'Instant',
       usedProcedures: ['PointSample']
     };
 
@@ -212,6 +223,7 @@ describe('observationAppToClient function tests', () => {
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'AirTemperature', 
+      aggregation: 'Instant',
       usedProcedures: ['PointSample']
     };
 
@@ -237,12 +249,14 @@ describe('observationAppToClient function tests', () => {
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       phenomenonTime: {
         hasBeginning: new Date('2019-12-04T17:16:23.205Z'),
-        hasEnd: new Date('2019-12-04T17:26:23.205Z')
+        hasEnd: new Date('2019-12-04T17:26:23.205Z'),
+        duration: 600
       },
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'precipitation-depth'
+      observedProperty: 'precipitation-depth',
+      aggregation: 'Sum',
     };
 
     const expected = {
@@ -254,12 +268,14 @@ describe('observationAppToClient function tests', () => {
       resultTime: '2019-12-04T17:26:23.205Z',
       phenomenonTime: {
         hasBeginning: '2019-12-04T17:16:23.205Z',
-        hasEnd: '2019-12-04T17:26:23.205Z'
+        hasEnd: '2019-12-04T17:26:23.205Z',
+        duration: 600
       },
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'precipitation-depth'
+      observedProperty: 'precipitation-depth',
+      aggregation: 'Sum'
     };
 
     const observationClient = observationAppToClient(observationApp);
@@ -281,6 +297,7 @@ describe('observationDbToApp function tests', () => {
       result_time: '2019-12-04T17:26:23.205Z',
       has_beginning: '2019-12-04T17:16:23.205Z',
       has_end: '2019-12-04T17:26:23.205Z',
+      duration: 600,
       value_number: '0.3',
       value_boolean: null,
       value_text: null,
@@ -291,6 +308,7 @@ describe('observationDbToApp function tests', () => {
       hosted_by_path: 'bob-back-garden.platform-1',
       has_feature_of_interest: 'EarthAtmosphere',
       observed_property: 'precipitation-depth',
+      aggregation: 'Sum',
       used_procedures: ['tip-sum'],
       location_client_id: '146380a6-0614-48ce-a0ae-a1bf935f015c',
       location_geojson: {type: 'Point', coordinates: [-1.9, 52.9]},
@@ -303,7 +321,8 @@ describe('observationDbToApp function tests', () => {
       timeseriesId: 54,
       phenomenonTime: {
         hasBeginning: new Date('2019-12-04T17:16:23.205Z'),
-        hasEnd: new Date('2019-12-04T17:26:23.205Z')
+        hasEnd: new Date('2019-12-04T17:26:23.205Z'),
+        duration: 600
       },
       hasResult: {
         value: 0.3
@@ -313,6 +332,7 @@ describe('observationDbToApp function tests', () => {
       hostedByPath: ['bob-back-garden', 'platform-1'],
       hasFeatureOfInterest: 'EarthAtmosphere',
       observedProperty: 'precipitation-depth',
+      aggregation: 'Sum',
       usedProcedures: ['tip-sum'],
       location: {
         id: 33,
@@ -330,6 +350,96 @@ describe('observationDbToApp function tests', () => {
     expected.clientId = observationApp.clientId;
     
     expect(observationApp).toEqual(expected);
+
+  });
+
+
+  test('Will omit the phenomenonTime object when its not required', () => {
+    
+    const observationDb = {
+      id: '223253',
+      timeseries_id: 54,
+      location_id: 33,
+      result_time: '2019-12-04T17:26:23.205Z',
+      has_beginning: '2019-12-04T17:26:23.205Z', // same as result_time
+      has_end: '2019-12-04T17:26:23.205Z', // same as result_time
+      duration: 0, // 0 as we're simulating an Instant observation
+      value_number: '0.3',
+      value_boolean: null,
+      value_text: null,
+      value_json: null,
+      flags: null,
+      made_by_sensor: 'rain-gauge-123',
+      hasDeployment: 'deployment-1',
+      hosted_by_path: 'bob-back-garden.platform-1',
+      has_feature_of_interest: 'EarthAtmosphere',
+      observed_property: 'precipitation-depth',
+      aggregation: 'Sum',
+      used_procedures: ['tip-sum'],
+      location_client_id: '146380a6-0614-48ce-a0ae-a1bf935f015c',
+      location_geojson: {type: 'Point', coordinates: [-1.9, 52.9]},
+      location_valid_at: '2019-07-05T12:43:24.621Z' 
+    };
+
+    const expected: any = {
+      id: 223253,
+      resultTime: new Date('2019-12-04T17:26:23.205Z'),
+      timeseriesId: 54,
+      hasResult: {
+        value: 0.3
+      },
+      madeBySensor: 'rain-gauge-123',
+      hasDeployment: 'deployment-1',
+      hostedByPath: ['bob-back-garden', 'platform-1'],
+      hasFeatureOfInterest: 'EarthAtmosphere',
+      observedProperty: 'precipitation-depth',
+      aggregation: 'Sum',
+      usedProcedures: ['tip-sum'],
+      location: {
+        id: 33,
+        clientId: '146380a6-0614-48ce-a0ae-a1bf935f015c',
+        geometry: {type: 'Point', coordinates: [-1.9, 52.9]},
+        validAt: new Date('2019-07-05T12:43:24.621Z')
+      }
+
+    };
+
+    const observationApp = observationDbToApp(observationDb);
+
+    // We can't easily predict the id due to the hashing, so add it here. The id construction is tested elsewhere anyway.
+    expect(check.nonEmptyString(observationApp.clientId)).toBe(true);
+    expected.clientId = observationApp.clientId;
+    
+    expect(observationApp).toEqual(expected);
+
+  });
+
+});
+
+
+
+describe('Testing buildObservationDb function', () => {
+
+  test('Check defaults will be added for has_beginning, has_end and duration', () => {
+    
+    const obsCore = {
+      resultTime: new Date('2019-07-05T12:43:24.621Z'),
+      value: 10.1
+    };
+
+    const timeseriesId = 5;
+
+    const expected = {
+      timeseries: 5,
+      result_time: '2019-07-05T12:43:24.621Z',
+      value_number: 10.1,
+      has_beginning: '2019-07-05T12:43:24.621Z',
+      has_end: '2019-07-05T12:43:24.621Z',
+      duration: 0
+    };
+
+    const observationDb = buildObservationDb(obsCore, timeseriesId);
+    expect(observationDb).toEqual(expected);
 
   });
 

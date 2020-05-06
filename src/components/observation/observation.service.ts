@@ -1,6 +1,6 @@
 import {ObservationCore} from './observation-core.class';
 import {ObservationApp} from './observation-app.class';
-import {pick, cloneDeep, sortBy, pullAll} from 'lodash';
+import {pick, cloneDeep, pullAll} from 'lodash';
 import {TimeseriesProps} from '../timeseries/timeseries-props.class';
 import {ObservationClient} from './observation-client.class';
 import {ObservationDb} from './observation-db.class';
@@ -28,8 +28,9 @@ export async function createObservationsTable(): Promise<void> {
     table.specificType('id', 'BIGSERIAL'); // Don't set this as primary or else create_hypertable won't work.
     table.integer('timeseries', 24).notNullable(); // 24 is the length of a Mongo ObjectID string
     table.timestamp('result_time', {useTz: true}).notNullable();
-    table.timestamp('has_beginning', {useTz: true});
-    table.timestamp('has_end', {useTz: true});
+    table.timestamp('has_beginning', {useTz: true}).notNullable(); // makes queries easier when force to give a value
+    table.timestamp('has_end', {useTz: true}).notNullable(); // makes queries easier when force to give a value
+    table.specificType('duration', 'numeric').notNullable(); // makes queries easier when force to give a value
     table.bigInteger('location');
     table.specificType('value_number', 'numeric');
     table.boolean('value_boolean');
@@ -94,6 +95,7 @@ const columnsToSelectDuringJoin = [
   'observations.result_time',
   'observations.has_beginning',
   'observations.has_end',
+  'observations.duration',
   'observations.value_number',
   'observations.value_boolean',
   'observations.value_text',
@@ -104,6 +106,7 @@ const columnsToSelectDuringJoin = [
   'timeseries.hosted_by_path',
   'timeseries.has_feature_of_interest',
   'timeseries.observed_property',
+  'timeseries.aggregation',
   'timeseries.unit',
   'timeseries.disciplines',
   'timeseries.used_procedures',
@@ -117,6 +120,7 @@ const columnsToSelectDuringJoinCondensed = pullAll(cloneDeep(columnsToSelectDuri
   'timeseries.hosted_by_path',
   'timeseries.has_feature_of_interest',
   'timeseries.observed_property',
+  'timeseries.aggregation',
   'timeseries.unit',
   'timeseries.disciplines',
   'timeseries.used_procedures',
@@ -194,6 +198,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         `${lateralDataAlias}.result_time`,
         `${lateralDataAlias}.has_beginning`,
         `${lateralDataAlias}.has_end`,
+        `${lateralDataAlias}.duration`,
         `${lateralDataAlias}.value_number`,
         `${lateralDataAlias}.value_boolean`,
         `${lateralDataAlias}.value_text`,
@@ -204,6 +209,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         `${selectedTimeseriesAlias}.hosted_by_path`,
         `${selectedTimeseriesAlias}.has_feature_of_interest`,
         `${selectedTimeseriesAlias}.observed_property`,
+        `${selectedTimeseriesAlias}.aggregation`,
         `${selectedTimeseriesAlias}.unit`,
         `${selectedTimeseriesAlias}.disciplines`,
         `${selectedTimeseriesAlias}.used_procedures`,
@@ -218,6 +224,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         `${selectedTimeseriesAlias}.hosted_by_path`,
         `${selectedTimeseriesAlias}.has_feature_of_interest`,
         `${selectedTimeseriesAlias}.observed_property`,
+        `${selectedTimeseriesAlias}.aggregation`,
         `${selectedTimeseriesAlias}.unit`,
         `${selectedTimeseriesAlias}.disciplines`,
         `${selectedTimeseriesAlias}.used_procedures`,
@@ -367,6 +374,18 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
                   builder.whereNull('timeseries.observed_property');
                 }
               }     
+            }
+          }
+
+          // aggregation
+          if (check.assigned(where.aggregation)) {
+            if (check.nonEmptyString(where.aggregation)) {
+              builder.where('timeseries.aggregation', where.aggregation);
+            }
+            if (check.nonEmptyObject(where.aggregation)) {
+              if (check.nonEmptyArray(where.aggregation.in)) {
+                builder.whereIn('timeseries.aggregation', where.aggregation.in);
+              }  
             }
           }
 
@@ -545,6 +564,28 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
           }
         }
 
+        // duration
+        if (check.assigned(where.duration)) {
+          if (check.number(where.duration)) {
+            // This is in case I allow clients to request observations at an exact resultTime  
+            builder.where('observations.duration', where.duration);
+          }
+          if (check.nonEmptyObject(where.duration)) {
+            if (check.assigned(where.duration.gte)) {
+              builder.where('observations.duration', '>=', where.duration.gte);
+            }
+            if (check.assigned(where.duration.gt)) {
+              builder.where('observations.duration', '>', where.duration.gt);
+            }
+            if (check.assigned(where.duration.lte)) {
+              builder.where('observations.duration', '<=', where.duration.lte);
+            }      
+            if (check.assigned(where.duration.lt)) {
+              builder.where('observations.duration', '<', where.duration.lt);
+            }  
+          }
+        }
+
         // timeseries ids
         if (check.assigned(where.timeseriesId)) {
           if (check.integer(where.timeseriesId)) {
@@ -681,6 +722,18 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
                 builder.whereNull('timeseries.observed_property');
               }
             }     
+          }
+        }
+
+        // aggregation
+        if (check.assigned(where.aggregation)) {
+          if (check.nonEmptyString(where.aggregation)) {
+            builder.where('timeseries.aggregation', where.aggregation);
+          }
+          if (check.nonEmptyObject(where.aggregation)) {
+            if (check.nonEmptyArray(where.aggregation.in)) {
+              builder.whereIn('timeseries.aggregation', where.aggregation.in);
+            }  
           }
         }
 
@@ -882,6 +935,7 @@ export function buildExtraOnPerClauses(where): string {
 
   let sql = '';
 
+  // resultTime
   if (check.assigned(where.resultTime)) {
     if (check.nonEmptyString(where.resultTime)) {
       // This is in case I allow clients to request observations at an exact resultTime 
@@ -904,6 +958,29 @@ export function buildExtraOnPerClauses(where): string {
     }
   }
 
+  // duration
+  if (check.assigned(where.duration)) {
+    if (check.number(where.duration)) {
+      sql += ` AND observations.duration = '${where.duration}'`;
+    }
+    if (check.nonEmptyObject(where.duration)) {
+      if (check.assigned(where.duration.gte)) {
+        sql += `AND observations.duration >= '${where.duration.gte}'`;
+      }
+      if (check.assigned(where.duration.gt)) {
+        sql += `AND observations.duration > '${where.duration.gt}'`;
+      }
+      if (check.assigned(where.duration.lte)) {
+        sql += `AND observations.duration <= '${where.duration.lte}'`;
+      }      
+      if (check.assigned(where.duration.lt)) {
+        sql += `AND observations.duration < '${where.duration.lt}'`;
+      }      
+
+    }
+  }
+
+  // flags
   if (check.assigned(where.flags)) {
     if (check.nonEmptyObject(where.flags)) {
       if (check.boolean(where.flags.exists)) {
@@ -1000,6 +1077,9 @@ export function extractCoreFromObservation(observation: ObservationApp): Observa
     if (observation.phenomenonTime.hasEnd) {
       obsCore.hasEnd = observation.phenomenonTime.hasEnd;
     }
+    if (observation.phenomenonTime.duration) {
+      obsCore.duration = observation.phenomenonTime.duration;
+    }
   }
   return obsCore;
 }
@@ -1013,6 +1093,7 @@ export function extractTimeseriesPropsFromObservation(observation: ObservationAp
     'hasDeployment',
     'hostedByPath',
     'observedProperty',
+    'aggregation',
     'hasFeatureOfInterest',
     'disciplines',
     'usedProcedures'
@@ -1084,6 +1165,9 @@ export function observationDbToCore(observationDb: ObservationDb): ObservationCo
   if (observationDb.has_end) {
     obsCore.hasEnd = new Date(observationDb.has_end);
   }
+  if (observationDb.duration) {
+    obsCore.duration = observationDb.duration;
+  }
 
   // Find the column that's not null
   if (observationDb.value_number !== null) {
@@ -1114,12 +1198,11 @@ export function buildObservationDb(obsCore: ObservationCore, timeseriesId: numbe
   if (obsCore.location) {
     observationDb.location = obsCore.location;
   }
-  if (obsCore.hasBeginning) {
-    observationDb.has_beginning = obsCore.hasBeginning.toISOString();
-  }
-  if (obsCore.hasEnd) {
-    observationDb.has_end = obsCore.hasEnd.toISOString();
-  }
+
+  // For the sake of making queries easier, if hasBeginning, hasEnd or duration have not been set then we'll set defaults for them. E.g. it's far easier to set duration as 0 and have the gte,lt,... queries work nicely than try to add the correctly bracketed OR sql query using knex.
+  observationDb.has_beginning = obsCore.hasBeginning ? obsCore.hasBeginning.toISOString() : observationDb.result_time;
+  observationDb.has_end = obsCore.hasEnd ? obsCore.hasEnd.toISOString() : observationDb.result_time;
+  observationDb.duration = check.assigned(obsCore.duration) ? obsCore.duration : 0;
 
   if (check.number(obsCore.value)) {
     observationDb.value_number = obsCore.value;
@@ -1168,16 +1251,26 @@ export function observationDbToApp(observationDb): ObservationApp {
   delete observationApp.locationGeojson;
   delete observationApp.locationValidAt;
 
-  if (observationApp.hasBeginning || observationApp.hasEnd) {
-    observationApp.phenomenonTime = {};
-    if (observationApp.hasBeginning) {
-      observationApp.phenomenonTime.hasBeginning = new Date(observationApp.hasBeginning);
-      delete observationApp.hasBeginning;
-    }
-    if (observationApp.hasEnd) {
-      observationApp.phenomenonTime.hasEnd = new Date(observationApp.hasEnd);
-      delete observationApp.hasEnd;
-    }
+  observationApp.phenomenonTime = {};
+  if (observationApp.hasBeginning) {
+    observationApp.phenomenonTime.hasBeginning = new Date(observationApp.hasBeginning);
+    delete observationApp.hasBeginning;
+  }
+  if (observationApp.hasEnd) {
+    observationApp.phenomenonTime.hasEnd = new Date(observationApp.hasEnd);
+    delete observationApp.hasEnd;
+  }
+  if (check.assigned(observationApp.duration)) {
+    observationApp.phenomenonTime.duration = observationApp.duration;
+    delete observationApp.duration;
+  }
+  
+  const includePhenomenonTimeObject = (check.assigned(observationDb.duration) && observationDb.duration > 0) ||
+    (observationDb.has_beginning && observationDb.has_beginning !== observationDb.result_time) ||
+    (observationDb.has_end && observationDb.has_end !== observationDb.result_time);
+  
+  if (!includePhenomenonTimeObject) {
+    delete observationApp.phenomenonTime;
   }
 
   observationApp.hasResult = {};
@@ -1234,6 +1327,7 @@ export function observationClientToApp(observationClient: ObservationClient): Ob
 }
 
 
+
 export function observationAppToClient(observationApp: ObservationApp): ObservationClient {
   const observationClient: any = cloneDeep(observationApp);
   observationClient.id = observationClient.clientId;
@@ -1256,3 +1350,4 @@ export function observationAppToClient(observationApp: ObservationApp): Observat
   }
   return observationClient;
 }
+

@@ -91,6 +91,12 @@ const getMultipleTimeseriesWhereSchema = joi.object({
       exists: joi.boolean()
     }).min(1)
   ),
+  aggregation: joi.alternatives().try(
+    joi.string(),
+    joi.object({
+      in: joi.array().items(joi.string()).min(1),
+    }).min(1)
+  ),
   unit: joi.alternatives().try(
     joi.string(),
     joi.object({

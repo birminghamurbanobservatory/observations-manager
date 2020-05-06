@@ -4,18 +4,17 @@ import * as observationService from '../observation/observation.service';
 import {findSingleMatchingTimeseries, convertPropsToExactWhere, updateTimeseries, createTimeseries} from '../timeseries/timeseries.service';
 import * as logger from 'node-logger';
 import * as joi from '@hapi/joi';
-import {InvalidObservation} from './errors/InvalidObservation';
 import {BadRequest} from '../../errors/BadRequest';
 import {config} from '../../config';
 import {cloneDeep, isEqual} from 'lodash';
 import {ObservationCore} from './observation-core.class';
 import {TimeseriesApp} from '../timeseries/timeseries-app.class';
 import {locationClientToApp, getLocationByClientId, createLocation, locationAppToClient} from '../location/location.service';
-import {validateGeometry} from '../../utils/geojson-validator';
 import {GeometryMismatch} from './errors/GeometryMismatch';
 import * as check from 'check-types';
 import {kebabCaseRegex} from '../../utils/regular-expressions';
 import hasher from '../../utils/hasher';
+import {validateObservation} from './observation-validator';
 
 
 const maxObsPerRequest = config.obs.maxPerRequest;
@@ -24,53 +23,16 @@ const maxObsPerRequest = config.obs.maxPerRequest;
 //-------------------------------------------------
 // Create Observation
 //-------------------------------------------------
-const createObservationSchema = joi.object({
-  madeBySensor: joi.string().required(),
-  hasResult: joi.object({
-    value: joi.any().required(),
-    unit: joi.string(), 
-    flags: joi.array().min(1).items(joi.string())
-  }).required(),
-  resultTime: joi.string().isoDate().required(),
-  phenomenonTime: joi.object({
-    hasBeginning: joi.string().isoDate(),
-    hasEnd: joi.string().isoDate()
-  }),
-  hasDeployment: joi.string(),
-  hostedByPath: joi.array().min(1).items(joi.string()),
-  hasFeatureOfInterest: joi.string(),
-  observedProperty: joi.string(), // TODO: Add a PascalCase regex?
-  disciplines: joi.array().min(1).items(joi.string()),
-  usedProcedures: joi.array().min(1).items(joi.string()),
-  location: joi.object({
-    id: joi.string().guid(), // this is the client_id, a uuid,
-    validAt: joi.string().isoDate(),
-    geometry: joi.object({
-      // For now let's only allow Point locations, although the locations table can handle LineStrings and Polygons, allowing them would make some spatial queries a little trickier (e.g. ST_Y won't work with non-points without using ST_CENTROID). Perhaps later down the line I'll need to support LineStrings and Polygons, e.g. for a rainfall radar image so I can capture it's spatial extent. Also consider serving observations to a user in a csv file, it's far easier just to have a column for lat and long than serve them some GeoJSON.
-      type: joi.string().valid('Point').required(),
-      coordinates: joi.array().required()
-    })
-    .custom((value) => {
-      validateGeometry(value); // throws an error if invalid
-      return value;
-    })
-    .required()
-  })
-}).required();
-
 export async function createObservation(observation: ObservationClient): Promise<ObservationClient> {
 
-  const {error: validationErr} = createObservationSchema.validate(observation);
-  if (validationErr) {
-    throw new InvalidObservation(`Observation is invalid. Reason: ${validationErr.message}`);
-  }
+  const validObservation = validateObservation(observation);
 
-  const obs = observationClientToApp(observation);
+  const obs = observationClientToApp(validObservation);
 
   // Handle the location first (if present)
   let matchingLocation;
-  if (observation.location) {
-    const locationFromObs = locationClientToApp(observation.location);
+  if (validObservation.location) {
+    const locationFromObs = locationClientToApp(validObservation.location);
     // Does this location already exist in our database?
     if (locationFromObs.clientId) {
       try {
@@ -94,7 +56,7 @@ export async function createObservation(observation: ObservationClient): Promise
       logger.debug('Creating a new location');
       // Use the observation resultTime as the validAt time for the location if it hasn't been specifically provided.
       if (check.not.assigned(locationFromObs.validAt)) {
-        locationFromObs.validAt = new Date(observation.resultTime);
+        locationFromObs.validAt = obs.resultTime;
       }
       // I have seen some race condition errors, e.g. when new Netatmo stations come online, because observations arrive at the same time, all with the same client id and it ends up trying to create a location just after it's already been created by the observation that arrived a split second earlier. The catch here should account for this.
       try {
@@ -219,6 +181,17 @@ const getObservationsWhereSchema = joi.object({
   })
   .without('lt', 'lte')
   .without('gt', 'gte'),
+  duration: joi.alternatives().try(
+    joi.number().min(0),
+    joi.object({
+      lt: joi.number().min(0),
+      lte: joi.number().min(0),
+      gt: joi.number().min(0),
+      gte: joi.number().min(0)
+    })
+    .without('lt', 'lte')
+    .without('gt', 'gte'),
+  ),
   madeBySensor: joi.alternatives().try(
     joi.string(),
     joi.object({
@@ -261,6 +234,12 @@ const getObservationsWhereSchema = joi.object({
     joi.object({
       in: joi.array().items(joi.string()).min(1),
       exists: joi.boolean()
+    }).min(1)
+  ),
+  aggregation: joi.alternatives().try(
+    joi.string(),
+    joi.object({
+      in: joi.array().items(joi.string()).min(1)
     }).min(1)
   ),
   unit: joi.alternatives().try(

@@ -4,6 +4,7 @@ export class ObservationDb {
   public result_time?: string;
   public has_beginning?: string;
   public has_end?: string;
+  public duration?: number;
   public location?: number;
   public value_number?: number;
   public value_boolean?: boolean;

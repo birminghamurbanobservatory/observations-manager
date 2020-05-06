@@ -12,6 +12,7 @@ describe('Testing of convertPropsToExactWhere function', () => {
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       observedProperty: 'AirTemperature',
+      aggregation: 'Instant',
       unit: 'DegreeCelsius',
       hasFeatureOfInterest: 'EarthAtmosphere',
       disciplines: ['Meterology'],
@@ -23,6 +24,7 @@ describe('Testing of convertPropsToExactWhere function', () => {
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
       observedProperty: 'AirTemperature',
+      aggregation: 'Instant',
       unit: 'DegreeCelsius',
       hasFeatureOfInterest: 'EarthAtmosphere',
       disciplines: ['Meterology'],
@@ -39,7 +41,8 @@ describe('Testing of convertPropsToExactWhere function', () => {
       madeBySensor: 'sensor-123',
       hasDeployment: 'deployment-1',
       observedProperty: 'AirTemperature',
-      hasFeatureOfInterest: 'EarthAtmosphere',
+      aggregation: 'Instant',
+      hasFeatureOfInterest: 'EarthAtmosphere'
     };
 
     const expected = {
@@ -47,6 +50,7 @@ describe('Testing of convertPropsToExactWhere function', () => {
       hasDeployment: 'deployment-1',
       hostedByPath: {exists: false},
       observedProperty: 'AirTemperature',
+      aggregation: 'Instant',
       unit: {exists: false},
       hasFeatureOfInterest: 'EarthAtmosphere',
       disciplines: {exists: false},
@@ -66,6 +70,7 @@ describe('Testing of convertPropsToExactWhere function', () => {
       hasDeployment: 'deployment-a',
       hostedByPath: ['lamppost-12', 'beta-weather-station'],
       observedProperty: 'AirTemperature',
+      aggregation: 'Instant',
       unit: 'DegreeCelsius',
       hasFeatureOfInterest: 'EarthAtmosphere',
       disciplines: ['Meteorology', 'Climatology'],
@@ -77,6 +82,7 @@ describe('Testing of convertPropsToExactWhere function', () => {
       hasDeployment: 'deployment-a',
       hostedByPath: ['lamppost-12', 'beta-weather-station'], // don't want this re-ordered, as the order means something
       observedProperty: 'AirTemperature',
+      aggregation: 'Instant',
       unit: 'DegreeCelsius',
       hasFeatureOfInterest: 'EarthAtmosphere',
       disciplines: ['Climatology', 'Meteorology'], // do want this reordered.
@@ -99,6 +105,7 @@ describe('Testing of convertPropsToExactWhere function', () => {
         hostedByPath: ['building-1', 'room-no-3', 'device'],
         hasFeatureOfInterest: 'buildings',
         observedProperty: 'AirTemperature',
+        aggregation: 'Instant',
         unit: 'DegreeCelsius',
         disciplines: ['Meteorology'],
         usedProcedures: ['point-sample']        
@@ -111,6 +118,7 @@ describe('Testing of convertPropsToExactWhere function', () => {
         hosted_by_path: 'building_1.room_no_3.device',
         has_feature_of_interest: 'buildings',
         observed_property: 'AirTemperature',
+        aggregation: 'Instant',
         unit: 'DegreeCelsius',
         disciplines: ['Meteorology'],
         used_procedures: ['point-sample']

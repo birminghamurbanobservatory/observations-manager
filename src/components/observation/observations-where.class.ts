@@ -1,5 +1,6 @@
 export class ObservationsWhere {
   public resultTime?: ResultTime;
+  public duration?: any;
   public timeseriesId?: any;
   public madeBySensor?: any; // i'd like to write this as "string | InObject" but I end up with issues.
   public hasDeployment?: any;
@@ -8,6 +9,7 @@ export class ObservationsWhere {
   public hostedByPathSpecial?: any; // allows lquery syntax
   public hasFeatureOfInterest?: any;
   public observedProperty?: any;
+  public aggregation?: any;
   public unit: any;
   public discipline?: any;
   public disciplines?: any;

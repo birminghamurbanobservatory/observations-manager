@@ -4,6 +4,7 @@ export class ObservationCore {
   public resultTime?: Date;
   public hasBeginning?: Date;
   public hasEnd?: Date;
+  public duration?: number;
   public flags?: string[];
   public location?: number;
 }

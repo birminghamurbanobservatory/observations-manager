@@ -5,6 +5,7 @@ export class TimeseriesProps {
   public hostedByPath?: string[];
   public hasFeatureOfInterest?: string;
   public observedProperty?: string;
+  public aggregation?: string;
   public discipline?: string[];
   public usedProcedure?: string[];
 }
