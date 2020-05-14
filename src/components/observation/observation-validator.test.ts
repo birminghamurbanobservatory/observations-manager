@@ -220,4 +220,32 @@ describe('Testing of checkAndCompleteClientPhenomenonTimeObject function', () =>
   });
 
 
+  test('Throws an error when the end is before the beginning', () => {
+    
+    const obj = {
+      hasBeginning: '2020-04-28T11:30:00.000Z',
+      hasEnd: '2020-04-28T11:20:00.000Z'
+    };
+
+    expect(() => {
+      checkAndCompleteClientPhenomenonTimeObject(obj);
+    }).toThrowError(InvalidPhenomenonTime);
+
+  });
+
+
+  test('Throws an error when the end is the same as the beginning', () => {
+    
+    const obj = {
+      hasBeginning: '2020-04-28T11:30:00.000Z',
+      hasEnd: '2020-04-28T11:30:00.000Z'
+    };
+
+    expect(() => {
+      checkAndCompleteClientPhenomenonTimeObject(obj);
+    }).toThrowError(InvalidPhenomenonTime);
+
+  });
+
+
 });

@@ -120,6 +120,11 @@ export function checkAndCompleteClientPhenomenonTimeObject(obj: {hasBeginning?: 
     throw new Error('Reached unexpected point in checkAndCompleteClientPhenomenonTimeObject function');
   }
 
+  // The duration must be greater than 0
+  if (!(complete.duration > 0)) {
+    throw new InvalidPhenomenonTime('The duration must be greater than 0');
+  }
+
   return complete;
 
 }

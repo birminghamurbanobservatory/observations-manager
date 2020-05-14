@@ -1256,27 +1256,18 @@ export function observationDbToApp(observationDb): ObservationApp {
   delete observationApp.locationGeojson;
   delete observationApp.locationValidAt;
 
-  observationApp.phenomenonTime = {};
-  if (observationApp.hasBeginning) {
-    observationApp.phenomenonTime.hasBeginning = new Date(observationApp.hasBeginning);
-    delete observationApp.hasBeginning;
+  // If the duration is 0, then there's no point in including the phenomenonTime object, because the resultTime has all the information we need.
+  const includePhenomenonTimeObject = check.assigned(observationApp.duration) && (Number(observationApp.duration) > 0);
+  if (includePhenomenonTimeObject) {
+    observationApp.phenomenonTime = {
+      hasBeginning: new Date(observationApp.hasBeginning),
+      hasEnd: new Date(observationApp.hasEnd),
+      duration: Number(observationApp.duration)
+    };
   }
-  if (observationApp.hasEnd) {
-    observationApp.phenomenonTime.hasEnd = new Date(observationApp.hasEnd);
-    delete observationApp.hasEnd;
-  }
-  if (check.assigned(observationApp.duration)) {
-    observationApp.phenomenonTime.duration = observationApp.duration;
-    delete observationApp.duration;
-  }
-  
-  const includePhenomenonTimeObject = (check.assigned(observationDb.duration) && observationDb.duration > 0) ||
-    (observationDb.has_beginning && observationDb.has_beginning !== observationDb.result_time) ||
-    (observationDb.has_end && observationDb.has_end !== observationDb.result_time);
-  
-  if (!includePhenomenonTimeObject) {
-    delete observationApp.phenomenonTime;
-  }
+  delete observationApp.hasBeginning;
+  delete observationApp.hasEnd;
+  delete observationApp.duration;
 
   observationApp.hasResult = {};
 
