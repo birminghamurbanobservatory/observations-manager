@@ -16,6 +16,7 @@ export class ObservationsWhere {
   public usedProcedure?: any;
   public usedProcedures?: any;
   public flags?: any;
+  public location?: any;
   public latitude: Coordinate;
   public longitude: Coordinate;
   public height: Coordinate;

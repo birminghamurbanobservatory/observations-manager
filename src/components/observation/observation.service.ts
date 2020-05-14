@@ -852,6 +852,20 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
           }
         }
 
+        // Location (exists yes/no)
+        if (check.assigned(where.location)) {
+          if (check.nonEmptyObject(where.location)) {
+            if (check.boolean(where.location.exists)) {
+              if (where.location.exists === true) {
+                builder.whereNotNull('observations.location');
+              } 
+              if (where.location.exists === false) {
+                builder.whereNull('observations.location');
+              } 
+            }
+          }
+        }
+
         // I could use something like ST_CONTAINS and ST_MakeEnvelope to make a bounding box if i have lat and lon values that represent all 4 sides, but given that I'm currently just dealing with points the approach below is easier to code and hopefully not any slower to query?
 
         // longitude
@@ -995,6 +1009,20 @@ export function buildExtraOnPerClauses(where): string {
     }
   }
   // N.B. if you add the ability to filter by specific flags, then you might want do a regex check on the flags to watch for any SQL injection.
+
+  // Location (exists yes/no)
+  if (check.assigned(where.location)) {
+    if (check.nonEmptyObject(where.location)) {
+      if (check.boolean(where.location.exists)) {
+        if (where.location.exists === true) {
+          sql += ` AND observations.location IS NOT NULL`;
+        }
+        if (where.location.exists === false) {
+          sql += ` AND observations.location IS NULL`;
+        }
+      }
+    }
+  }
 
   // longitude
   if (check.object(where.longitude)) {
@@ -1171,7 +1199,7 @@ export function observationDbToCore(observationDb: ObservationDb): ObservationCo
     obsCore.hasEnd = new Date(observationDb.has_end);
   }
   if (observationDb.duration) {
-    obsCore.duration = observationDb.duration;
+    obsCore.duration = Number(observationDb.duration);
   }
 
   // Find the column that's not null

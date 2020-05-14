@@ -284,6 +284,10 @@ const getObservationsWhereSchema = joi.object({
   flags: joi.object({
     exists: joi.boolean()
   }),
+  // Does the observation even have a location
+  location: joi.object({
+    exists: joi.boolean()
+  }),
   // Spatial queries
   latitude: joi.object({
     lt: joi.number().min(-90).max(90),
