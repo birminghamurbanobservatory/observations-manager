@@ -113,10 +113,12 @@ const columnsToSelectDuringJoin = [
   'timeseries.used_procedures',
   'locations.client_id as location_client_id',
   'locations.geojson as location_geojson',
+  'locations.height as location_height',
   'locations.valid_at as location_valid_at'    
 ];
 
 const columnsToSelectDuringJoinCondensed = pullAll(cloneDeep(columnsToSelectDuringJoin), [
+  // these are the columns we don't need
   'timeseries.has_deployment',
   'timeseries.hosted_by_path',
   'timeseries.has_feature_of_interest',
@@ -216,10 +218,12 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         `${selectedTimeseriesAlias}.used_procedures`,
         `${lateralDataAlias}.location_client_id`,
         `${lateralDataAlias}.location_geojson`,
+        `${lateralDataAlias}.location_height`,
         `${lateralDataAlias}.location_valid_at` 
       ];
 
       const onePerSelectColumnsCondensed = pullAll(cloneDeep(onePerSelectColumns), [
+        // There's are the columns we don't need
         `${selectedTimeseriesAlias}.made_by_sensor`,
         `${selectedTimeseriesAlias}.has_deployment`,
         `${selectedTimeseriesAlias}.hosted_by_path`,
@@ -503,6 +507,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
               client_id AS location_client_id,
               geo AS location_geo,
               geojson AS location_geojson,
+              height AS location_height,
               valid_at AS location_valid_at 
             FROM locations
           ) locs
@@ -904,16 +909,16 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
         // height
         if (check.assigned(where.height)) {
           if (check.assigned(where.height.gte)) {
-            builder.where(st.z(st.geometry('locations.geo')), '>=', where.height.gte);
+            builder.where('locations.height', '>=', where.height.gte);
           }
           if (check.assigned(where.height.gt)) {
-            builder.where(st.z(st.geometry('locations.geo')), '>', where.height.gt);
+            builder.where('locations.height', '>', where.height.gt);
           }
           if (check.assigned(where.height.lte)) {
-            builder.where(st.z(st.geometry('locations.geo')), '<=', where.height.lte);
+            builder.where('locations.height', '<=', where.height.lte);
           }      
           if (check.assigned(where.height.lt)) {
-            builder.where(st.z(st.geometry('locations.geo')), '<', where.height.lt);
+            builder.where('locations.height', '<', where.height.lt);
           }      
         }
 
@@ -1065,16 +1070,16 @@ export function buildExtraOnPerClauses(where): string {
   if (check.object(where.height)) {
     if (check.nonEmptyObject(where.height)) {
       if (check.number(where.height.gte)) {
-        sql += `AND ST_Z(location_geo::geometry) >= '${where.height.gte}'`;
+        sql += `location_height >= '${where.height.gte}'`;
       }
       if (check.number(where.height.gt)) {
-        sql += `AND ST_Z(location_geo::geometry) > '${where.height.gt}'`;
+        sql += `location_height > '${where.height.gt}'`;
       }
       if (check.number(where.height.lte)) {
-        sql += `AND ST_Z(location_geo::geometry) <= '${where.height.lte}'`;
+        sql += `location_height <= '${where.height.lte}'`;
       }      
       if (check.number(where.height.lt)) {
-        sql += `AND ST_Z(location_geo::geometry) < '${where.height.lt}'`;
+        sql += `location_height < '${where.height.lt}'`;
       }      
     }
   }

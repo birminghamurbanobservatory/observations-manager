@@ -10,7 +10,7 @@ import {LocationDb} from './location-db.class';
 import {CreateLocationFail} from './errors/CreateLocationFail';
 import {v4 as uuid} from 'uuid';
 import {LocationAlreadyExists} from './errors/LocationAlreadyExists';
-
+import * as check from 'check-types';
 
 
 export async function createLocationsTable(): Promise<void> {
@@ -19,9 +19,12 @@ export async function createLocationsTable(): Promise<void> {
 
     table.bigIncrements('id');
     table.text('client_id').unique().notNullable(); // the unique method here should create an index
-    table.specificType('geo', 'GEOGRAPHY').notNullable(); // defaults to SRID=4326, and can handle locations with elevation
+    table.specificType('geo', 'GEOGRAPHY(Point)').notNullable();
     table.jsonb('geojson').notNullable(); // geojson geometry object
+    table.float('height'); // decided to keep this separate from the lat and lon
     table.timestamp('valid_at', {useTz: true}).notNullable();
+    
+    // TODO: Maybe at a later date I can add a 'extent' column, e.g. to capture radar observations that cover a wide area, but for now I want to get things simply by having the observation geo column as a point.
 
   });
 
@@ -71,6 +74,7 @@ export async function createLocation(location: LocationApp): Promise<LocationApp
       client_id: locationDb.client_id,
       geojson: locationDb.geojson,
       geo: knex.raw(`ST_GeomFromGeoJSON('${JSON.stringify(locationDb.geo)}')::geography`),
+      height: check.assigned(locationDb.height) || null,
       valid_at: locationDb.valid_at
     })
     .returning('*');
