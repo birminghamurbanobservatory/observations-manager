@@ -1282,6 +1282,10 @@ export function observationDbToApp(observationDb): ObservationApp {
       geometry: observationApp.locationGeojson,
       validAt: new Date(observationApp.locationValidAt)
     };
+    if (observationApp.locationHeight) {
+      observationApp.location.height = observationApp.locationHeight; 
+      delete observationApp.locationHeight;
+    }
   }
 
   delete observationApp.locationId;

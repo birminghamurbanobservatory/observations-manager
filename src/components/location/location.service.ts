@@ -74,7 +74,7 @@ export async function createLocation(location: LocationApp): Promise<LocationApp
       client_id: locationDb.client_id,
       geojson: locationDb.geojson,
       geo: knex.raw(`ST_GeomFromGeoJSON('${JSON.stringify(locationDb.geo)}')::geography`),
-      height: check.assigned(locationDb.height) || null,
+      height: check.assigned(locationDb.height) ? locationDb.height : null,
       valid_at: locationDb.valid_at
     })
     .returning('*');
