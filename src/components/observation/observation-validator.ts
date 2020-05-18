@@ -46,7 +46,7 @@ const createObservationSchema = joi.object({
     validAt: joi.string().isoDate(),
     height: joi.number(),
     geometry: joi.object({
-      type: joi.string().valid('Point').required(),
+      type: joi.string().valid('Point').required(), // limit this to Points only for now.
       coordinates: joi.array().length(2).required()
     })
     .custom((value) => {

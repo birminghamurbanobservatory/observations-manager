@@ -19,7 +19,7 @@ export async function createLocationsTable(): Promise<void> {
 
     table.bigIncrements('id');
     table.text('client_id').unique().notNullable(); // the unique method here should create an index
-    table.specificType('geo', 'GEOGRAPHY(Point)').notNullable(); // you'd remove "(Point)" if you want to allow polygons. 
+    table.specificType('geo', 'GEOGRAPHY').notNullable(); // I've left out "(POINT)" to leave option for polygons later. 
     table.jsonb('geojson').notNullable(); // geojson geometry object
     table.float('height'); // decided to keep this separate from the lat and lon
     table.timestamp('valid_at', {useTz: true}).notNullable();
