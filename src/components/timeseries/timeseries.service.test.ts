@@ -12,11 +12,11 @@ describe('Testing of convertPropsToExactWhere function', () => {
       madeBySensor: 'sensor-123',
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      observedProperty: 'AirTemperature',
-      aggregation: 'Instant',
-      unit: 'DegreeCelsius',
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      disciplines: ['Meterology'],
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      unit: 'degree-celsius',
+      hasFeatureOfInterest: 'earth-atmosphere',
+      disciplines: ['meteorology'],
       usedProcedures: ['point-sample']
     };
 
@@ -24,11 +24,11 @@ describe('Testing of convertPropsToExactWhere function', () => {
       madeBySensor: 'sensor-123',
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      observedProperty: 'AirTemperature',
-      aggregation: 'Instant',
-      unit: 'DegreeCelsius',
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      disciplines: ['Meterology'],
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      unit: 'degree-celsius',
+      hasFeatureOfInterest: 'earth-atmosphere',
+      disciplines: ['meteorology'],
       usedProcedures: ['point-sample']      
     };
 
@@ -41,19 +41,19 @@ describe('Testing of convertPropsToExactWhere function', () => {
     const props = {
       madeBySensor: 'sensor-123',
       hasDeployment: 'deployment-1',
-      observedProperty: 'AirTemperature',
-      aggregation: 'Instant',
-      hasFeatureOfInterest: 'EarthAtmosphere'
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      hasFeatureOfInterest: 'earth-atmosphere'
     };
 
     const expected = {
       madeBySensor: 'sensor-123',
       hasDeployment: 'deployment-1',
       hostedByPath: {exists: false},
-      observedProperty: 'AirTemperature',
-      aggregation: 'Instant',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
       unit: {exists: false},
-      hasFeatureOfInterest: 'EarthAtmosphere',
+      hasFeatureOfInterest: 'earth-atmosphere',
       disciplines: {exists: false},
       usedProcedures: {exists: false}     
     };
@@ -70,11 +70,11 @@ describe('Testing of convertPropsToExactWhere function', () => {
       madeBySensor: 'sensor-123',
       hasDeployment: 'deployment-a',
       hostedByPath: ['lamppost-12', 'beta-weather-station'],
-      observedProperty: 'AirTemperature',
-      aggregation: 'Instant',
-      unit: 'DegreeCelsius',
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      disciplines: ['Meteorology', 'Climatology'],
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      unit: 'degree-celsius',
+      hasFeatureOfInterest: 'earth-atmosphere',
+      disciplines: ['meteorology', 'climatology'],
       usedProcedures: ['point-sample', 'averaged']     
     };
 
@@ -82,11 +82,11 @@ describe('Testing of convertPropsToExactWhere function', () => {
       madeBySensor: 'sensor-123',
       hasDeployment: 'deployment-a',
       hostedByPath: ['lamppost-12', 'beta-weather-station'], // don't want this re-ordered, as the order means something
-      observedProperty: 'AirTemperature',
-      aggregation: 'Instant',
-      unit: 'DegreeCelsius',
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      disciplines: ['Climatology', 'Meteorology'], // do want this reordered.
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      unit: 'degree-celsius',
+      hasFeatureOfInterest: 'earth-atmosphere',
+      disciplines: ['climatology', 'meteorology'], // do want this reordered.
       usedProcedures: ['point-sample', 'averaged']  // don't want this re-ordered, as the order means something
     };
 
@@ -105,10 +105,10 @@ describe('Testing of convertPropsToExactWhere function', () => {
         hasDeployment: 'deployment-1',
         hostedByPath: ['building-1', 'room-no-3', 'device'],
         hasFeatureOfInterest: 'buildings',
-        observedProperty: 'AirTemperature',
-        aggregation: 'Instant',
-        unit: 'DegreeCelsius',
-        disciplines: ['Meteorology'],
+        observedProperty: 'air-temperature',
+        aggregation: 'instant',
+        unit: 'degree-celsius',
+        disciplines: ['meteorology'],
         usedProcedures: ['point-sample']        
       };
       const expected: TimeseriesDb = {
@@ -118,10 +118,10 @@ describe('Testing of convertPropsToExactWhere function', () => {
         has_deployment: 'deployment-1',
         hosted_by_path: 'building_1.room_no_3.device',
         has_feature_of_interest: 'buildings',
-        observed_property: 'AirTemperature',
-        aggregation: 'Instant',
-        unit: 'DegreeCelsius',
-        disciplines: ['Meteorology'],
+        observed_property: 'air-temperature',
+        aggregation: 'instant',
+        unit: 'degree-celsius',
+        disciplines: ['meteorology'],
         used_procedures: ['point-sample']
       };
       const timeseriesDb = timeseriesAppToDb(timeseriesApp);

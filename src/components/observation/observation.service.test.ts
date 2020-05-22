@@ -12,17 +12,17 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
         value: '12'
       },
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'AirTemperature',
-      aggregation: 'Instant',
-      disciplines: ['Meteorology']
+      hasFeatureOfInterest: 'earth-atmosphere',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      disciplines: ['meteorology']
     };
     const expected = {
       madeBySensor: 'sensor-123',
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'AirTemperature',
-      aggregation: 'Instant',
-      disciplines: ['Meteorology']     
+      hasFeatureOfInterest: 'earth-atmosphere',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      disciplines: ['meteorology']     
     };
     expect(extractTimeseriesPropsFromObservation(observation)).toEqual(expected);
   });
@@ -33,27 +33,27 @@ describe('Testing of extractTimeseriesPropsFromObservation function', () => {
       madeBySensor: 'sensor-123',
       hasResult: {
         value: '12',
-        unit: 'DegreeCelsius'
+        unit: 'degree-celsius'
       },
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'AirTemperature',
-      aggregation: 'Instant',
-      disciplines: ['Meteorology'],
-      usedProcedures: ['PointSample']
+      hasFeatureOfInterest: 'earth-atmosphere',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      disciplines: ['meteorology'],
+      usedProcedures: ['point-sample']
     };
     const expected = {
       madeBySensor: 'sensor-123',
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'AirTemperature', 
-      aggregation: 'Instant',
-      unit: 'DegreeCelsius',
-      disciplines: ['Meteorology'],
-      usedProcedures: ['PointSample']      
+      hasFeatureOfInterest: 'earth-atmosphere',
+      observedProperty: 'air-temperature', 
+      aggregation: 'instant',
+      unit: 'degree-celsius',
+      disciplines: ['meteorology'],
+      usedProcedures: ['point-sample']      
     };
     expect(extractTimeseriesPropsFromObservation(observation)).toEqual(expected);
   });
@@ -130,10 +130,10 @@ describe('observationClientToApp function tests', () => {
       resultTime: '2019-12-04T17:26:23.205Z',
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'AirTemperature', 
-      aggregation: 'Instant',
-      usedProcedures: ['PointSample']
+      hasFeatureOfInterest: 'earth-atmosphere',
+      observedProperty: 'air-temperature', 
+      aggregation: 'instant',
+      usedProcedures: ['point-sample']
     };
 
     const expected = {
@@ -144,10 +144,10 @@ describe('observationClientToApp function tests', () => {
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'AirTemperature', 
-      aggregation: 'Instant',
-      usedProcedures: ['PointSample']
+      hasFeatureOfInterest: 'earth-atmosphere',
+      observedProperty: 'air-temperature', 
+      aggregation: 'instant',
+      usedProcedures: ['point-sample']
     };
 
     const observationApp = observationClientToApp(observationClient);
@@ -170,9 +170,9 @@ describe('observationClientToApp function tests', () => {
       },
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
+      hasFeatureOfInterest: 'earth-atmosphere',
       observedProperty: 'precipitation-depth',
-      aggregation: 'Sum'
+      aggregation: 'sum'
     };
 
     const expected = {
@@ -188,9 +188,9 @@ describe('observationClientToApp function tests', () => {
       },
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
+      hasFeatureOfInterest: 'earth-atmosphere',
       observedProperty: 'precipitation-depth',
-      aggregation: 'Sum',
+      aggregation: 'sum',
     };
 
     const observationApp = observationClientToApp(observationClient);
@@ -217,10 +217,10 @@ describe('observationAppToClient function tests', () => {
       resultTime: new Date('2019-12-04T17:26:23.205Z'),
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'AirTemperature', 
-      aggregation: 'Instant',
-      usedProcedures: ['PointSample']
+      hasFeatureOfInterest: 'earth-atmosphere',
+      observedProperty: 'air-temperature', 
+      aggregation: 'instant',
+      usedProcedures: ['point-sample']
     };
 
     const expected: any = {
@@ -232,10 +232,10 @@ describe('observationAppToClient function tests', () => {
       resultTime: '2019-12-04T17:26:23.205Z',
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
-      observedProperty: 'AirTemperature', 
-      aggregation: 'Instant',
-      usedProcedures: ['PointSample']
+      hasFeatureOfInterest: 'earth-atmosphere',
+      observedProperty: 'air-temperature', 
+      aggregation: 'instant',
+      usedProcedures: ['point-sample']
     };
 
     const observationClient = observationAppToClient(observationApp);
@@ -265,9 +265,9 @@ describe('observationAppToClient function tests', () => {
       },
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
+      hasFeatureOfInterest: 'earth-atmosphere',
       observedProperty: 'precipitation-depth',
-      aggregation: 'Sum',
+      aggregation: 'sum',
     };
 
     const expected = {
@@ -284,9 +284,9 @@ describe('observationAppToClient function tests', () => {
       },
       hasDeployment: 'deployment-1',
       hostedByPath: ['platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
+      hasFeatureOfInterest: 'earth-atmosphere',
       observedProperty: 'precipitation-depth',
-      aggregation: 'Sum'
+      aggregation: 'sum'
     };
 
     const observationClient = observationAppToClient(observationApp);
@@ -317,9 +317,9 @@ describe('observationDbToApp function tests', () => {
       made_by_sensor: 'rain-gauge-123',
       hasDeployment: 'deployment-1',
       hosted_by_path: 'bob-back-garden.platform-1',
-      has_feature_of_interest: 'EarthAtmosphere',
+      has_feature_of_interest: 'earth-atmosphere',
       observed_property: 'precipitation-depth',
-      aggregation: 'Sum',
+      aggregation: 'sum',
       used_procedures: ['tip-sum'],
       location_client_id: '146380a6-0614-48ce-a0ae-a1bf935f015c',
       location_geojson: {type: 'Point', coordinates: [-1.9, 52.9]},
@@ -341,9 +341,9 @@ describe('observationDbToApp function tests', () => {
       madeBySensor: 'rain-gauge-123',
       hasDeployment: 'deployment-1',
       hostedByPath: ['bob-back-garden', 'platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
+      hasFeatureOfInterest: 'earth-atmosphere',
       observedProperty: 'precipitation-depth',
-      aggregation: 'Sum',
+      aggregation: 'sum',
       usedProcedures: ['tip-sum'],
       location: {
         id: 33,
@@ -383,9 +383,9 @@ describe('observationDbToApp function tests', () => {
       made_by_sensor: 'rain-gauge-123',
       hasDeployment: 'deployment-1',
       hosted_by_path: 'bob-back-garden.platform-1',
-      has_feature_of_interest: 'EarthAtmosphere',
+      has_feature_of_interest: 'earth-atmosphere',
       observed_property: 'precipitation-depth',
-      aggregation: 'Sum',
+      aggregation: 'sum',
       used_procedures: ['tip-sum'],
       location_client_id: '146380a6-0614-48ce-a0ae-a1bf935f015c',
       location_geojson: {type: 'Point', coordinates: [-1.9, 52.9]},
@@ -402,9 +402,9 @@ describe('observationDbToApp function tests', () => {
       madeBySensor: 'rain-gauge-123',
       hasDeployment: 'deployment-1',
       hostedByPath: ['bob-back-garden', 'platform-1'],
-      hasFeatureOfInterest: 'EarthAtmosphere',
+      hasFeatureOfInterest: 'earth-atmosphere',
       observedProperty: 'precipitation-depth',
-      aggregation: 'Sum',
+      aggregation: 'sum',
       usedProcedures: ['tip-sum'],
       location: {
         id: 33,

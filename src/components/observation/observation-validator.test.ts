@@ -13,10 +13,10 @@ describe('Testing validateObservation function', () => {
       resultTime: '2020-05-05T12:32:00.124Z',
       hasResult: {
         value: 12.2,
-        unit: 'DegreeCelsius'
+        unit: 'degree-celsius'
       },
-      observedProperty: 'AirTemperature',
-      aggregation: 'Instant'
+      observedProperty: 'air-temperature',
+      aggregation: 'instant'
     };
 
     const validObservation = validateObservation(observation);
@@ -32,9 +32,9 @@ describe('Testing validateObservation function', () => {
       resultTime: '2020-05-05T12:32:00.124Z',
       hasResult: {
         value: 12.2,
-        unit: 'DegreeCelsius'
+        unit: 'degree-celsius'
       },
-      observedProperty: 'DewPointTemperature'
+      observedProperty: 'dew-point-temperature'
     };
 
     const validObservation = validateObservation(observation);
@@ -51,10 +51,10 @@ describe('Testing validateObservation function', () => {
       resultTime: '2020-05-05T12:32:00.124Z',
       hasResult: {
         value: 12.2,
-        unit: 'DegreeCelsius'
+        unit: 'degree-celsius'
       },
-      observedProperty: 'AirTemperature',
-      aggregation: 'Maximum',
+      observedProperty: 'air-temperature',
+      aggregation: 'maximum',
       phenomenonTime: {
         hasBeginning: '2020-04-28T11:30:00.000Z',
         hasEnd: '2020-04-28T11:35:00.000Z',
@@ -75,14 +75,14 @@ describe('Testing validateObservation function', () => {
       resultTime: '2020-05-05T12:32:00.124Z',
       hasResult: {
         value: 12.2,
-        unit: 'DegreeCelsius'
+        unit: 'degree-celsius'
       },
-      observedProperty: 'AirTemperature'
+      observedProperty: 'air-temperature'
     };
 
     const validObservation = validateObservation(observation);
     expect(check.nonEmptyObject(validObservation)).toEqual(true);
-    expect(validObservation.aggregation).toBe('Instant');
+    expect(validObservation.aggregation).toBe('instant');
 
   });
 
@@ -94,10 +94,10 @@ describe('Testing validateObservation function', () => {
       resultTime: '2020-05-05T12:32:00.124Z',
       hasResult: {
         value: 12.2,
-        unit: 'DegreeCelsius'
+        unit: 'degree-celsius'
       },
-      aggregation: 'Maximum',
-      observedProperty: 'AirTemperature'
+      aggregation: 'maximum',
+      observedProperty: 'air-temperature'
     };
 
     expect(() => {

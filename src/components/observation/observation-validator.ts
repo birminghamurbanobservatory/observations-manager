@@ -9,15 +9,15 @@ import * as check from 'check-types';
 
 
 const validAggregations = [
-  'Instant',
-  'Average',
-  'Maximum',
-  'Minimum',
-  'Range',
-  'Sum',
-  'Count',
-  'Variance',
-  'StandardDeviation'
+  'instant',
+  'average',
+  'maximum',
+  'minimum',
+  'range',
+  'sum',
+  'count',
+  'variance',
+  'standard-deviation'
 ];
 
 const createObservationSchema = joi.object({
@@ -70,7 +70,7 @@ export function validateObservation(observation: ObservationClient): Observation
     validObservation.phenomenonTime = checkAndCompleteClientPhenomenonTimeObject(validObservation.phenomenonTime);
   }
 
-  const acceptedInstantValue = 'Instant';
+  const acceptedInstantValue = 'instant';
 
   if (!validObservation.phenomenonTime) {
     if (validObservation.aggregation) {
