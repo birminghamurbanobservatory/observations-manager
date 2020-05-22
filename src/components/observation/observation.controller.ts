@@ -12,8 +12,6 @@ import {TimeseriesApp} from '../timeseries/timeseries-app.class';
 import {locationClientToApp, getLocationByClientId, createLocation, locationAppToClient} from '../location/location.service';
 import {GeometryMismatch} from './errors/GeometryMismatch';
 import * as check from 'check-types';
-import {kebabCaseRegex} from '../../utils/regular-expressions';
-import hasher from '../../utils/hasher';
 import {validateObservation} from './observation-validator';
 
 

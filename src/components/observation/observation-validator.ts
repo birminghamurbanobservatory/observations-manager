@@ -2,7 +2,6 @@ import * as joi from '@hapi/joi';
 import {validateGeometry} from '../../utils/geojson-validator';
 import {ObservationClient} from './observation-client.class';
 import {InvalidObservation} from './errors/InvalidObservation';
-import {pascalCaseRegex} from '../../utils/regular-expressions';
 import {cloneDeep, intersection} from 'lodash';
 import {InvalidPhenomenonTime} from './errors/InvalidPhenomenonTime';
 import * as check from 'check-types';
@@ -37,8 +36,8 @@ const createObservationSchema = joi.object({
   hasDeployment: joi.string(),
   hostedByPath: joi.array().min(1).items(joi.string()),
   hasFeatureOfInterest: joi.string(),
-  observedProperty: joi.string().pattern(pascalCaseRegex),
-  aggregation: joi.string().valid(...validAggregations).pattern(pascalCaseRegex),
+  observedProperty: joi.string(),
+  aggregation: joi.string().valid(...validAggregations),
   disciplines: joi.array().min(1).items(joi.string()),
   usedProcedures: joi.array().min(1).items(joi.string()),
   location: joi.object({
