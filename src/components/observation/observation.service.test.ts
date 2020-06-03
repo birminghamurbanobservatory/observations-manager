@@ -1,4 +1,4 @@
-import {extractTimeseriesPropsFromObservation, generateObservationId, deconstructObservationId, observationAppToClient, observationClientToApp, observationDbToApp, buildObservationDb} from './observation.service';
+import {extractTimeseriesPropsFromObservation, generateObservationId, deconstructObservationId, observationAppToClient, observationClientToApp, observationDbToApp, buildObservationDb, buildValueTypeInQuery} from './observation.service';
 import * as check from 'check-types';
 import {InvalidObservationId} from './errors/InvalidObservationId';
 
@@ -451,6 +451,20 @@ describe('Testing buildObservationDb function', () => {
 
     const observationDb = buildObservationDb(obsCore, timeseriesId);
     expect(observationDb).toEqual(expected);
+
+  });
+
+});
+
+
+describe('Testing buildValueTypeInQuery function', () => {
+
+  test('Builds as expected', () => {
+
+    const types = ['number', 'text'];
+    const expected = '(observations.value_number IS NOT NULL OR observations.value_text IS NOT NULL)';
+    const query = buildValueTypeInQuery(types);
+    expect(query).toBe(expected);
 
   });
 

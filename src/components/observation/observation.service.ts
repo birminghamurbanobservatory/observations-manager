@@ -252,8 +252,16 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
               builder.where('timeseries.id', where.timeseriesId);
             }
             if (check.nonEmptyObject(where.timeseriesId)) {
+              // in
               if (check.nonEmptyArray(where.timeseriesId.in)) {
                 builder.whereIn('timeseries.id', where.timeseriesId.in);
+              }   
+              // Not
+              if (check.nonEmptyObject(where.timeseriesId.not)) {
+                // Not in
+                if (check.nonEmptyArray(where.timeseriesId.not.in)) {
+                  builder.whereNotIn('timeseries.id', where.timeseriesId.not.in);
+                } 
               }   
             }
           }
@@ -601,9 +609,17 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
             builder.where('timeseries.id', where.timeseriesId);
           }
           if (check.nonEmptyObject(where.timeseriesId)) {
+            // in
             if (check.nonEmptyArray(where.timeseriesId.in)) {
               builder.whereIn('timeseries.id', where.timeseriesId.in);
-            }   
+            }  
+            // Not
+            if (check.nonEmptyObject(where.timeseriesId.not)) {
+              // Not in
+              if (check.nonEmptyArray(where.timeseriesId.not.in)) {
+                builder.whereNotIn('timeseries.id', where.timeseriesId.not.in);
+              } 
+            }  
           }
         }
 
@@ -860,6 +876,18 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
           }
         }
 
+        // value type
+        if (check.assigned(where.valueType)) {
+          if (check.nonEmptyString(where.valueType)) {
+            builder.whereNotNull(`observations.value_${where.valueType}`);
+          }
+          if (check.nonEmptyObject(where.valueType)) {
+            if (check.nonEmptyArray(where.valueType.in)) {        
+              builder.whereRaw(buildValueTypeInQuery(where.valueType.in));
+            }
+          }
+        }
+
         // Location (exists yes/no)
         if (check.assigned(where.location)) {
           if (check.nonEmptyObject(where.location)) {
@@ -1017,6 +1045,19 @@ export function buildExtraOnPerClauses(where): string {
     }
   }
   // N.B. if you add the ability to filter by specific flags, then you might want do a regex check on the flags to watch for any SQL injection.
+
+  // value type
+  if (check.assigned(where.valueType)) {
+    if (check.nonEmptyString(where.valueType)) {
+      sql += ` AND observations.value_${where.valueType} IS NOT NULL`;
+    }
+    if (check.nonEmptyObject(where.valueType)) {
+      if (check.nonEmptyArray(where.valueType.in)) {        
+        sql += ` AND ${buildValueTypeInQuery(where.valueType.in)}`;
+      }
+    }
+  }
+
 
   // Location (exists yes/no)
   if (check.assigned(where.location)) {
@@ -1266,6 +1307,28 @@ export function buildObservationDb(obsCore: ObservationCore, timeseriesId: numbe
 }
 
 
+export function buildValueTypeInQuery(types: string[], tableName = 'observations'): string {
+  
+  if (types.length === 0) {
+    throw new Error('At least one value type is required');
+  }
+
+  const query = types.reduce((query, type) => {
+    let queryUpdated = query;
+    if (queryUpdated !== '') {
+      queryUpdated += ' OR ';
+    }
+    queryUpdated += `${tableName}.value_${type} IS NOT NULL`;
+    return queryUpdated;
+  }, '');
+
+  // wrap it in brackets
+  const queryWrapped = `(${query})`;
+  return queryWrapped;
+
+}
+
+
 export function observationDbToApp(observationDb): ObservationApp {
 
   const observationApp: any = convertKeysToCamelCase(observationDb);
@@ -1386,4 +1449,3 @@ export function observationAppToClient(observationApp: ObservationApp): Observat
   }
   return observationClient;
 }
-

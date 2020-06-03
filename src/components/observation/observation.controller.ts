@@ -168,7 +168,10 @@ const getObservationsWhereSchema = joi.object({
   timeseriesId: joi.alternatives().try(
     joi.string().alphanum(), // catches any accidental commas that might be present
     joi.object({
-      in: joi.array().items(joi.string()).min(1).required()
+      in: joi.array().items(joi.string()).min(1),
+      not: joi.object({
+        in: joi.array().items(joi.string()).min(1).required(),
+      })
     })
   ),
   resultTime: joi.object({
@@ -189,6 +192,12 @@ const getObservationsWhereSchema = joi.object({
     })
     .without('lt', 'lte')
     .without('gt', 'gte'),
+  ),
+  valueType: joi.alternatives().try(
+    joi.string().valid('number', 'text', 'boolean', 'json'),
+    joi.object({
+      in: joi.array().items(joi.string().valid('number', 'text', 'boolean', 'json')).min(1).required()
+    }).min(1)
   ),
   madeBySensor: joi.alternatives().try(
     joi.string(),
@@ -344,12 +353,18 @@ export async function getObservations(where = {}, options = {}): Promise<{data: 
   const {error: optionsErr, value: optionsValidated} = getObservationsOptionsSchema.validate(options);
   if (whereErr) throw new BadRequest(optionsErr.message);
 
+  // Decode the hashed timeseries ids.
   if (check.assigned(whereValidated.timeseriesId)) {
     if (check.string(whereValidated.timeseriesId)) {
       whereValidated.timeseriesId = decodeTimeseriesId(whereValidated.timeseriesId);
     }
     if (check.array(whereValidated.timeseriesId.in)) {
       whereValidated.timeseriesId.in = whereValidated.timeseriesId.in.map(decodeTimeseriesId);
+    }
+    if (check.object(whereValidated.timeseriesId.not)) {
+      if (check.array(whereValidated.timeseriesId.not.in)) {
+        whereValidated.timeseriesId.not.in = whereValidated.timeseriesId.not.in.map(decodeTimeseriesId);
+      }
     }
   }
 
