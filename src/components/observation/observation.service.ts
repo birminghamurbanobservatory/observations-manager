@@ -166,6 +166,9 @@ export async function getObservationByClientId(id: string): Promise<ObservationA
 }
 
 
+//-------------------------------------------------
+// Get Observations
+//-------------------------------------------------
 export async function getObservations(where: ObservationsWhere, options: {limit?: number; offset?: number; onePer: string; sortBy: string; sortOrder: string; condense: boolean}): Promise<ObservationApp[]> {
 
   // If the request is for "onePer" then it ends up being a fundamentally different SQL query, because we need to use a lateral join instead.
