@@ -209,7 +209,13 @@ const getObservationsWhereSchema = joi.object({
     joi.string(), // find obs that belong to this deployment
     joi.object({
       in: joi.array().items(joi.string()).min(1), // obs that belong to any of these deployments
-      exists: joi.boolean()
+      exists: joi.boolean(),
+      not: joi.alternatives().try(
+        joi.string(),
+        joi.object({
+          in: joi.array().items(joi.string()).min(1).required()
+        })
+      )
     }).min(1)
   ),
   // For exact matches

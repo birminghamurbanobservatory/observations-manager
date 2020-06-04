@@ -302,7 +302,15 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
                 if (where.hasDeployment.exists === false) {
                   builder.whereNull('timeseries.has_deployment');
                 }
-              }     
+              }
+              if (check.nonEmptyString(where.hasDeployment.not)) {
+                builder.whereNot('timeseries.has_deployment', where.hasDeployment.not);
+              }
+              if (check.nonEmptyObject(where.hasDeployment.not)) {
+                if (check.nonEmptyArray(where.hasDeployment.not.in)) {
+                  builder.whereNotIn('timeseries.has_deployment', where.hasDeployment.not.in);
+                }
+              }  
             }
           }
      
@@ -658,6 +666,14 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
               } 
               if (where.hasDeployment.exists === false) {
                 builder.whereNull('timeseries.has_deployment');
+              }
+            } 
+            if (check.nonEmptyString(where.hasDeployment.not)) {
+              builder.whereNot('timeseries.has_deployment', where.hasDeployment.not);
+            }
+            if (check.nonEmptyObject(where.hasDeployment.not)) {
+              if (check.nonEmptyArray(where.hasDeployment.not.in)) {
+                builder.whereNotIn('timeseries.has_deployment', where.hasDeployment.not.in);
               }
             }     
           }
