@@ -19,6 +19,10 @@ import {ltreeStringToArray, platformIdToAnywhereLquery, arrayToLtreeString} from
 import knexPostgis from 'knex-postgis';
 import hasher from '../../utils/hasher';
 import {InvalidObservationId} from './errors/InvalidObservationId';
+import {DeleteObservationFail} from './errors/DeleteObservationFail';
+import * as joi from '@hapi/joi';
+import {DeleteObservationsFail} from './errors/DeleteObservationsFail';
+import {UpdateObservationsFail} from './errors/UpdateObservationsFail';
 
 const st = knexPostgis(knex);
 
@@ -1152,6 +1156,109 @@ export function buildExtraOnPerClauses(where): string {
 
 
   return sql;
+}
+
+
+//-------------------------------------------------
+// Update observations
+//-------------------------------------------------
+const updateObservationsWhereSchema = joi.object({
+  timeseries: joi.object({
+    in: joi.array().items(joi.number()).min(1).required()
+  }).required()
+})
+.required();
+
+const updateObservationsUpdatesSchema = joi.object({
+  timeseries: joi.number().required()
+})
+.min(1)
+.required();
+
+export async function updateObservations(where: {timeseries: any}, updates: {timeseries: number}): Promise<number[]> {
+
+  // This is another function that has the potential to cause all kinds of damage if I don't pass it the correct arguments, so let's validate them to reduce the risk.
+  joi.assert(where, updateObservationsWhereSchema);
+  joi.assert(updates, updateObservationsUpdatesSchema); 
+
+  // Given that I currently only update the timeseries ID I don't need to remap any key names to column names, or do any other conversion. If you ever accept any other properties then you may need to add this functionality.
+  const updatesFormatted = cloneDeep(updates);
+
+  let updatedRows;
+  try {
+    updatedRows = await knex('observations')
+    .returning(['id'])
+    .update(updatesFormatted)
+    .where((builder) => {
+      if (where.timeseries) {
+        if (where.timeseries.in) {
+          builder.whereIn('timeseries', where.timeseries.in);
+        }
+      }
+    });
+  } catch (err) {
+    throw new UpdateObservationsFail(undefined, err.message);
+  } 
+
+  // For now at least, let's keep it simple and just return an array of the observation IDs that we updated. Rather than trying to build the full observations.
+  const idsOfUpdatedObservations = updatedRows.map((row) => row.id);
+  return idsOfUpdatedObservations;
+
+}
+
+
+
+//-------------------------------------------------
+// Delete Observation
+//-------------------------------------------------
+export async function deleteObservation(id: number): Promise<void> {
+
+  let nRowsAffected: number;
+  try {
+    nRowsAffected = await knex('observations')
+    .where({id})
+    .del();
+  } catch (err) {
+    throw new DeleteObservationFail(undefined, err.message);
+  }
+
+  if (nRowsAffected === 0) {
+    throw new ObservationNotFound(`A timeseries with id '${id}' could not be found`);
+  }
+
+  return;
+
+}
+
+
+//-------------------------------------------------
+// Delete Observations
+//-------------------------------------------------
+const deleteObservationsWhereSchema = joi.object({
+  timeseries: joi.number().required() // a number, i.e. not in its hased client format
+})
+.required()
+.min(1);
+
+export async function deleteObservations(where: {timeseries: number}): Promise<number> {
+
+  // N.B. the where property 'timeseries' is the same as its column name so I don't need to remap it, but if I ever add any more options e.g. resultTime, then I'll need to map it to its column name.
+
+  // Let's validate the where object to reduce the risk of accidentally deleting all the observations.
+  const {error: whereErr} = deleteObservationsWhereSchema.validate(where);
+  if (whereErr) throw new Error('Invalid where object for deleting observations');
+
+  let nRowsAffected: number;
+  try {
+    nRowsAffected = await knex('observations')
+    .where(where)
+    .del();
+  } catch (err) {
+    throw new DeleteObservationsFail(undefined, err.message);
+  }
+
+  return nRowsAffected;
+
 }
 
 

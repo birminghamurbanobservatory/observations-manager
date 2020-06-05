@@ -1,5 +1,5 @@
 import * as event from 'event-stream';
-import {getSingleTimeseries, getMultipleTimeseries} from './timeseries.controller';
+import {getSingleTimeseries, getMultipleTimeseries, deleteSingleTimeseries, mergeTimeseries} from './timeseries.controller';
 import * as logger from 'node-logger';
 import {Promise} from 'bluebird'; 
 import {logCensorAndRethrow} from '../../events/handle-event-handler-error';
@@ -12,7 +12,9 @@ export async function subscribeToTimeseriesEvents(): Promise<void> {
 
   const subscriptionFunctions = [
     subscribeToSingleTimeseriesGetRequests,
-    subscribeToMultipleTimeseriesGetRequests
+    subscribeToMultipleTimeseriesGetRequests,
+    subscribeToSingleTimeseriesDeleteRequests,
+    subscribeToTimeseriesMergeRequests
   ];
 
   // I don't want later subscriptions to be prevented, just because an earlier attempt failed, as I want my event-stream module to have all the event names and handler functions added to its list of subscriptions so it can add them again upon a reconnect.
@@ -104,6 +106,76 @@ async function subscribeToMultipleTimeseriesGetRequests(): Promise<any> {
     }
 
     return timeseriesData;
+  });
+
+  logger.debug(`Subscribed to ${eventName} requests`);
+  return;  
+
+}
+
+
+//-------------------------------------------------
+// Merge Timeseries
+//-------------------------------------------------
+async function subscribeToTimeseriesMergeRequests(): Promise<any> {
+
+  const eventName = 'timeseries.merge.request';
+
+  const timeseriesMergeRequestSchema = joi.object({
+    goodIdToKeep: joi.string(),
+    idsToMerge: joi.array().items(joi.string()).min(1)
+  })
+  .required();
+
+  await event.subscribe(eventName, async (message): Promise<void> => {
+
+    logger.debug(`New ${eventName} message.`, message);
+
+    let result;
+    try {
+      const {error: err} = timeseriesMergeRequestSchema.validate(message);
+      if (err) throw new BadRequest(`Invalid ${eventName} request: ${err.message}`);
+      result = await mergeTimeseries(message.goodIdToKeep, message.idsToMerge);
+    } catch (err) {
+      logCensorAndRethrow(eventName, err);
+    }
+
+    return result;
+  });
+
+  logger.debug(`Subscribed to ${eventName} requests`);
+  return;  
+
+}
+
+
+//-------------------------------------------------
+// Delete Single Timeseries
+//-------------------------------------------------
+async function subscribeToSingleTimeseriesDeleteRequests(): Promise<any> {
+
+  const eventName = 'single-timeseries.delete.request';
+
+  const singleTimeseriesDeleteRequestSchema = joi.object({
+    where: joi.object({
+      id: joi.string().required()
+    })
+  })
+  .required();
+
+  await event.subscribe(eventName, async (message): Promise<void> => {
+
+    logger.debug(`New ${eventName} message.`, message);
+
+    try {
+      const {error: err} = singleTimeseriesDeleteRequestSchema.validate(message);
+      if (err) throw new BadRequest(`Invalid ${eventName} request: ${err.message}`);
+      await deleteSingleTimeseries(message.where.id);
+    } catch (err) {
+      logCensorAndRethrow(eventName, err);
+    }
+
+    return;
   });
 
   logger.debug(`Subscribed to ${eventName} requests`);

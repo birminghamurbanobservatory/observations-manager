@@ -11,6 +11,7 @@ const schema = joi.object({
   OBS_MAX_PER_REQUEST: joi.number()
     .max(100000)
     .default(1000),
+  // Be careful not to change this salt, otherwise you could easily end up getting/updating/deleting completely the wrong obs/timeseries.
   OBS_SALT: joi.string()
     .required()
 }).unknown() // allows for extra fields (i.e that we don't check for) in the object being checked.

@@ -4,8 +4,9 @@ import * as logger from 'node-logger';
 import * as joi from '@hapi/joi';
 import {TimeseriesClient} from './timeseries-client.class';
 import {BadRequest} from '../../errors/BadRequest';
-
-
+import {deleteObservations, updateObservations} from '../observation/observation.service';
+import * as Promise from 'bluebird';
+import {minBy, maxBy} from 'lodash';
 
 //-------------------------------------------------
 // Get Single Timeseries
@@ -180,5 +181,116 @@ export async function getMultipleTimeseries(where = {}, options = {}): Promise<{
       count: timeseriesForClient.length
     } 
   };
+
+}
+
+
+
+
+//-------------------------------------------------
+// Merge Timeseries
+//-------------------------------------------------
+export async function mergeTimeseries(goodIdToKeep: string, idsToMerge: string[]): Promise<any> {
+
+  logger.debug(`Merging ${idsToMerge.length} timeseries into timeseries ${goodIdToKeep}`);
+
+  if (idsToMerge.includes(goodIdToKeep)) {
+    throw new BadRequest(`The id '${goodIdToKeep}' is provided as both a merger and mergee timeseries.`);
+  }
+
+  // Decode the hashed ids.
+  const goodDbIdToKeep = timeseriesService.decodeTimeseriesId(goodIdToKeep);
+  const dbIdsToMerge = idsToMerge.map(timeseriesService.decodeTimeseriesId);
+
+  // First check that the goodId exists (throws an error if it doesn't)
+  let goodTimeseries;
+  try {
+    goodTimeseries = await timeseriesService.getTimeseries(goodDbIdToKeep);
+  } catch (error) {
+    if (error.name === 'TimeseriesNotFound') {
+      // If we don't do this the error message with have numerical database ID, not the nice client id.
+      error.message = `A timeseries with id ${goodIdToKeep} could not be found`; 
+      throw error;
+    } else {
+      throw error;
+    }
+  }
+
+  // Get the old timeseries. I can't imagine there will ever be many timeseries to merge, so let's get them one by one, so that a meaningful error is generated if the timeseries doesn't exist.
+  const timeseriesToMerge = await Promise.map(dbIdsToMerge, async (dbIdToMerge, idx) => {
+    let timeseries;
+    try {
+      timeseries = await timeseriesService.getTimeseries(dbIdToMerge);
+    } catch (error) {
+      if (error.name === 'TimeseriesNotFound') {
+        // If we don't do this the error message with have numerical database ID, not the nice client id.
+        error.message = `A timeseries with id ${idsToMerge[idx]} could not be found`; 
+        throw error;
+      } else {
+        throw error;
+      }
+    }
+    return timeseries;
+  });
+
+  // We'll want to update the time of the first and last obs
+  // @ts-ignore
+  const {firstObs: minFirstObs} = minBy(timeseriesToMerge, 'firstObs');
+  // @ts-ignore
+  const {lastObs: maxLastObs} = maxBy(timeseriesToMerge, 'lastObs');
+
+  const updates: any = {};
+  if (minFirstObs < goodTimeseries.firstObs) {
+    updates.firstObs = minFirstObs;
+  }
+  if (maxLastObs > goodTimeseries.lastObs) {
+    updates.lastObs = maxLastObs;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    logger.debug('Updating the good timeseries', updates);
+    await timeseriesService.updateTimeseries(goodDbIdToKeep, updates);
+  }
+
+  // Update the observations
+  const updateObservationIds = await updateObservations({timeseries: {in: dbIdsToMerge}}, {timeseries: goodDbIdToKeep});
+  const nObservationsMerged = updateObservationIds.length;
+  logger.debug(`${updateObservationIds.length} observations have been reassigned to timeseries '${goodIdToKeep}'.`);
+
+  // Delete the now merged timeseries
+  await Promise.map(dbIdsToMerge, async (dbIdToMerge) => {
+    await timeseriesService.deleteTimeseries(dbIdToMerge);
+    return;
+  });
+
+  logger.debug(`Timeseries successfully merged`);
+
+  // It will be useful for the end user to know how many observations were assigned a new timeseriesId.
+  return {
+    nObservationsMerged
+  };
+
+}
+
+
+//-------------------------------------------------
+// Delete Single Timeseries
+//-------------------------------------------------
+// Doesn't just delete the timeseries but deletes all its observations too, because the database won't let you delete a timeseries if there are still observations with that timeseries ID.
+export async function deleteSingleTimeseries(clientId): Promise<void> {
+
+  // Decode the hashed id.
+  const databaseId = timeseriesService.decodeTimeseriesId(clientId);
+  logger.debug(`Deleting timeseries with database id '${databaseId}' (clientId: ${clientId})`);
+
+  // Delete the observations
+  const nObsDeleted = await deleteObservations({timeseries: databaseId});
+  logger.debug(`${nObsDeleted} observations deleted whilst deleting timeseries '${clientId}'.`);
+
+  // Delete the timeseries
+  await timeseriesService.deleteTimeseries(databaseId);
+  logger.debug(`Timeseries successfully deleted (datebaseId: ${databaseId}, clientId: '${clientId}')`);
+
+  return;
 
 }

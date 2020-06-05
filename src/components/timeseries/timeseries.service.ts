@@ -18,6 +18,8 @@ import hasher from '../../utils/hasher';
 import {TimeseriesClient} from './timeseries-client.class';
 import {arrayToPostgresArrayString} from '../../utils/postgresql-helpers';
 import {InvalidTimeseriesId} from './errors/InvalidTimeseriesId';
+import {DeleteTimeseriesFail} from './errors/DeleteTimeseriesFail';
+import {InvalidObservationId} from '../observation/errors/InvalidObservationId';
 
 
 
@@ -487,6 +489,30 @@ export async function findSingleMatchingTimeseries(where: TimeseriesWhere): Prom
 
 
 
+export async function deleteTimeseries(id: number): Promise<void> {
+
+  let nRowsAffected: number;
+  try {
+    nRowsAffected = await knex('timeseries')
+    .where({id})
+    .del();
+  } catch (err) {
+    throw new DeleteTimeseriesFail(undefined, err.message);
+  }
+
+  if (nRowsAffected === 0) {
+    throw new TimeseriesNotFound(`A timeseries with id '${id}' could not be found`);
+  }
+
+  if (nRowsAffected > 1) {
+    logger.error(`${nRowsAffected} rows were deleted when attempting to delete timeseries ${id}. Only 1 row should have been deleted.`);
+  }
+
+  return;
+
+}
+
+
 
 // I.e. to produce a where object aimed at finding a single timeseries.
 // This is important, e.g. for making sure that if a property isn't provided then the where object has {exists: false} for it. It also properly handles properties that are an array.
@@ -584,6 +610,14 @@ export function decodeTimeseriesId(clientId): number {
   const decodedId = Number(hasher.decode(clientId));
   // If a client just enters a random string, this .decode method will typically return 0.
   if (decodedId < 1) {
+    throw new InvalidTimeseriesId;
+  }
+  // It's possible that the client could provide a long string as client id. When decoded such a large number would be written in the exponent form (e.g. 1.4216729617808857e+29) when it's converted to a string, which is what knex/PostgreSQL does. Therefore we want to catch this here, rather than letting postgresql catch it.
+  if (decodedId.toString().includes('e+')) {
+    throw new InvalidTimeseriesId;
+  }
+  // Because our timeseries IDs are held in an integer column they can only ever go up to 2,147,483,647 anyway
+  if (decodedId > 2147483647) {
     throw new InvalidTimeseriesId;
   }
   return decodedId;
