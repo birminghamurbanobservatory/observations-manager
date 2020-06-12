@@ -40,7 +40,8 @@ export async function subscribeToObservationEvents(): Promise<void> {
 //-------------------------------------------------
 async function subscribeToObservationCreateRequests(): Promise<any> {
   
-  const eventName = 'observation.create.request';
+  // N.B. The event-stream package changes the configuration of a queue based on whether it contains the work 'request'. Here we leave it out because we want the queue to be durable and lazy to aid the processing of many observations in bulk.
+  const eventName = 'observation.create';
 
   const observationCreateRequestSchema = joi.object({
     new: joi.object({

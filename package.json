@@ -28,7 +28,7 @@
     "check-types": "^11.0.0",
     "cls-hooked": "^4.2.2",
     "dotenv": "^8.2.0",
-    "event-stream": "github:birminghamurbanobservatory/event-stream#semver:^1.0.0",
+    "event-stream": "github:birminghamurbanobservatory/event-stream#semver:^2.0.0",
     "hashids": "^2.2.1",
     "knex": "^0.20.4",
     "knex-postgis": "^0.12.0",
