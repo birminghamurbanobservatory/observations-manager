@@ -12,4 +12,5 @@ export class TimeseriesDb {
   public has_feature_of_interest?: string;
   public disciplines?: string[];
   public used_procedures?: string[];
+  public total?: number; // used when counting the total number of timeseries
 }

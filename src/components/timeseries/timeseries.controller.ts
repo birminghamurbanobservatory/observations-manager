@@ -170,15 +170,15 @@ export async function getMultipleTimeseries(where = {}, options = {}): Promise<{
     whereValidated.id.in = whereValidated.id.in.map(timeseriesService.decodeTimeseriesId);
   }
 
-  const timeseries = await timeseriesService.findTimeseries(whereValidated, optionsValidated);
+  const {data: timeseries, count, total} = await timeseriesService.findTimeseries(whereValidated, optionsValidated);
 
   const timeseriesForClient = timeseries.map(timeseriesService.timeseriesAppToClient);
   logger.debug(`Got ${timeseriesForClient.length} timeseries.`);
   return {
     data: timeseriesForClient,
-    // TODO: At some point you may want to calculate and return the total number of timeseries available, e.g. for pagination, this information will go in this meta object. I just need to make sure I can calculate this efficiently.
     meta: {
-      count: timeseriesForClient.length
+      count,
+      total
     } 
   };
 

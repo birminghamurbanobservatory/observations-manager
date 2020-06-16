@@ -114,13 +114,20 @@ export async function getTimeseries(id: number): Promise<TimeseriesApp> {
 }
 
 // i.e. find multiple timeseries
-export async function findTimeseries(where: TimeseriesWhere, options: {limit?: number; offset?: number; sortBy?: string; sortOrder?: string} = {}): Promise<TimeseriesApp[]> {
+export async function findTimeseries(
+  where: TimeseriesWhere, 
+  options: {
+    limit?: number; 
+    offset?: number; 
+    sortBy?: string; 
+    sortOrder?: string;
+  } = {}): Promise<{data: TimeseriesApp[]; count: number; total: number}> {
 
   let timeseries: TimeseriesDb[];
 
   try {
     timeseries = await knex('timeseries')
-    .select()
+    .select('*', knex.raw('count(*) OVER() AS total'))
     .where((builder) => {
 
       // Matching ids
@@ -455,7 +462,19 @@ export async function findTimeseries(where: TimeseriesWhere, options: {limit?: n
     throw new GetTimeseriesFail(undefined, err.message);
   }
 
-  return timeseries.map(timeseriesDbToApp);
+  const first = timeseries[0];
+
+  const result = {
+    data: timeseries.map(timeseriesDbToApp),
+    count: timeseries.length,
+    total: 0
+  };
+
+  if (first) {
+    result.total = Number(first.total);
+  }
+
+  return result;
 
 }
 
@@ -474,7 +493,7 @@ export async function findSingleMatchingTimeseries(where: TimeseriesWhere): Prom
     }
   });
 
-  const timeseriesArray = await findTimeseries(where);
+  const {data: timeseriesArray} = await findTimeseries(where);
 
   if (timeseriesArray.length === 0) {
     return undefined;
@@ -587,6 +606,7 @@ export function timeseriesDbToApp(timeseriesDb: TimeseriesDb): TimeseriesApp {
   if (timeseriesApp.hostedByPath) {
     timeseriesApp.hostedByPath = ltreeStringToArray(timeseriesApp.hostedByPath);
   }
+  delete timeseriesApp.total;
   return timeseriesApp;
 }
 
