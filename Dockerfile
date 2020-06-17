@@ -13,7 +13,7 @@ RUN npm install --only=prod
 # Bundle app source code inside the docker image
 COPY . .
 
-# Don't need to expose it as communcation will be solely via the event stream. Well unless I need to expose the amqp port? 
+# Don't need to expose it as communcation will be solely via the event stream. 
 # EXPOSE 80
 
 # Define the command to run
