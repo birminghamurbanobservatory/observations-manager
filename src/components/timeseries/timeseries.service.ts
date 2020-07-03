@@ -410,6 +410,12 @@ export async function findTimeseries(
               builder.whereNull('disciplines');
             }              
           }
+          if (check.nonEmptyArray(where.disciplines.not)) {
+            // The following approach adds parentheses around these two statements, which is important, otherwise it would return any timeseries with a NULL disciplines value ignoring all the other filters, which is not what we want.
+            builder.where((qb) => {
+              qb.whereNot('disciplines', where.disciplines.not).orWhereNull('disciplines');
+            });
+          } 
         }
       }   
 

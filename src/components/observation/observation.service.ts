@@ -457,7 +457,7 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
                 }              
               }
             }
-          }  
+          }
 
           // disciplines
           if (check.assigned(where.disciplines)) {
@@ -473,6 +473,12 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
                 if (where.disciplines.exists === false) {
                   builder.whereNull('timeseries.disciplines');
                 }              
+              }
+              if (check.nonEmptyArray(where.disciplines.not)) {
+                // The following approach adds parentheses around these two statements, which is important, otherwise it would return any observations with a NULL disciplines value ignoring all the other filters, which is not what we want.
+                builder.where((qb) => {
+                  qb.whereNot('timeseries.disciplines', where.disciplines.not).orWhereNull('timeseries.disciplines');
+                });
               }
             }
           }
@@ -837,15 +843,21 @@ export async function getObservations(where: ObservationsWhere, options: {limit?
               } 
               if (where.disciplines.exists === false) {
                 builder.whereNull('timeseries.disciplines');
-              }              
+              }             
             }
+            if (check.nonEmptyArray(where.disciplines.not)) {
+              // The following approach adds parentheses around these two statements, which is important, otherwise it would return any observations with a NULL disciplines value ignoring all the other filters, which is not what we want.
+              builder.where((qb) => {
+                qb.whereNot('timeseries.disciplines', where.disciplines.not).orWhereNull('timeseries.disciplines');
+              });
+            } 
           }
         }
 
         // usedProcedure
         if (check.assigned(where.usedProcedure)) {
           if (check.nonEmptyString(where.usedProcedure)) {
-            // Find any timeseries whose discipline array contains this one discipline (if there are others in the array then it will still match)
+            // Find any timeseries whose array contains this one (if there are others in the array then it will still match)
             builder.where('timeseries.used_procedures', '&&', [where.usedProcedure]);
           }
           if (check.nonEmptyObject(where.usedProcedure)) {

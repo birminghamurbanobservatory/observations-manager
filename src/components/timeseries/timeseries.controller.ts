@@ -6,7 +6,7 @@ import {TimeseriesClient} from './timeseries-client.class';
 import {BadRequest} from '../../errors/BadRequest';
 import {deleteObservations, updateObservations} from '../observation/observation.service';
 import * as Promise from 'bluebird';
-import {minBy, maxBy} from 'lodash';
+import {minBy, maxBy, sortBy} from 'lodash';
 
 //-------------------------------------------------
 // Get Single Timeseries
@@ -119,9 +119,10 @@ const getMultipleTimeseriesWhereSchema = joi.object({
     }).min(1)
   ),
   disciplines: joi.alternatives().try( // for an exact match of the whole array
-    joi.array().items(joi.string()).min(1),
+    joi.array().items(joi.string()).min(1).custom((arr) => sortBy(arr)), // sort alphabetically to match database.
     joi.object({
-      exists: joi.boolean()
+      exists: joi.boolean(),
+      not: joi.array().items(joi.string()).min(1).custom((arr) => sortBy(arr)), // sort alphabetically to match database.
     }).min(1)
   ),
   usedProcedure: joi.alternatives().try(

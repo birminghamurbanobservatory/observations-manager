@@ -6,7 +6,7 @@ import * as logger from 'node-logger';
 import * as joi from '@hapi/joi';
 import {BadRequest} from '../../errors/BadRequest';
 import {config} from '../../config';
-import {cloneDeep, isEqual} from 'lodash';
+import {cloneDeep, isEqual, sortBy} from 'lodash';
 import {ObservationCore} from './observation-core.class';
 import {TimeseriesApp} from '../timeseries/timeseries-app.class';
 import {locationClientToApp, getLocationByClientId, createLocation, locationAppToClient} from '../location/location.service';
@@ -276,9 +276,10 @@ const getObservationsWhereSchema = joi.object({
     }).min(1)
   ),
   disciplines: joi.alternatives().try( // for an exact match of the whole array
-    joi.array().items(joi.string()).min(1),
+    joi.array().items(joi.string()).min(1).custom((arr) => sortBy(arr)), // sort alphabetically to match database.
     joi.object({
-      exists: joi.boolean()
+      exists: joi.boolean(),
+      not: joi.array().items(joi.string()).min(1).custom((arr) => sortBy(arr)), // sort alphabetically to match database.
     }).min(1)
   ),
   usedProcedure: joi.alternatives().try(
@@ -373,6 +374,8 @@ export async function getObservations(where = {}, options = {}): Promise<{data: 
       }
     }
   }
+
+  console.log(whereValidated);
 
   const observations = await observationService.getObservations(whereValidated, optionsValidated);
 
