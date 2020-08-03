@@ -390,3 +390,35 @@ export async function getObservations(where = {}, options = {}): Promise<{data: 
   };
 
 }
+
+
+//-------------------------------------------------
+// Update Observation
+//-------------------------------------------------
+const observationUpdatesSchema = joi.object({
+  // There's not many properties that we want a client being able to update. For example we don't really want the client changing timeseries properties, e.g. madeBySensor, because this would completely change the timeseries it belongs to.
+  hasResult: joi.object({
+    // Provide a value of null when you want all flags removing.
+    flags: joi.array().allow(null).min(1).items(joi.string())
+  })
+  // TODO: other properties you might want to consider supporting are the value, the resultTime, the location and the phenomenonTime properties.
+})
+.min(1)
+.required();
+
+export async function updateObservation(id: string, updates: any): Promise<ObservationClient> {
+
+  logger.debug(`Updating observation '${id}'`, {updates});
+
+  const {error: validationErr, value: validUpdates} = observationUpdatesSchema.validate(updates);
+  if (validationErr) throw new BadRequest(validationErr.message);
+
+  const flatUpdates = Object.assign({}, validUpdates, validUpdates.hasResult);
+  delete flatUpdates.hasResult;
+
+  const updatedObservation = await observationService.updateObservationByClientId(id, flatUpdates);
+  logger.debug(`Observation '${id}' updated.`, updatedObservation);
+
+  return observationService.observationAppToClient(updatedObservation);
+
+}

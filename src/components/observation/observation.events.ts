@@ -1,5 +1,5 @@
 import * as event from 'event-stream';
-import {createObservation, getObservation, getObservations} from './observation.controller';
+import {createObservation, getObservation, getObservations, updateObservation} from './observation.controller';
 import * as logger from 'node-logger';
 import {Promise} from 'bluebird'; 
 import {logCensorAndRethrow} from '../../events/handle-event-handler-error';
@@ -13,7 +13,8 @@ export async function subscribeToObservationEvents(): Promise<void> {
   const subscriptionFunctions = [
     subscribeToObservationCreateRequests,
     subscribeToObservationGetRequests,
-    subscribeToObservationsGetRequests
+    subscribeToObservationsGetRequests,
+    subscribeToObservationUpdateRequest
   ];
 
   // I don't want later subscriptions to be prevented, just because an earlier attempt failed, as I want my event-stream module to have all the event names and handler functions added to its list of subscriptions so it can add them again upon a reconnect.
@@ -43,7 +44,7 @@ async function subscribeToObservationCreateRequests(): Promise<any> {
   // N.B. The event-stream package changes the configuration of a queue based on whether it contains the work 'request'. Here we leave it out because we want the queue to be durable and lazy to aid the processing of many observations in bulk.
   const eventName = 'observation.create';
 
-  const observationCreateRequestSchema = joi.object({
+  const observationCreateSchema = joi.object({
     new: joi.object({
       // We'll let the controller/model check this.
     })
@@ -57,7 +58,7 @@ async function subscribeToObservationCreateRequests(): Promise<any> {
 
     let createdObservation: ObservationClient;
     try {
-      const {error: err} = observationCreateRequestSchema.validate(message);
+      const {error: err} = observationCreateSchema.validate(message);
       if (err) throw new BadRequest(`Invalid ${eventName} request: ${err.message}`);    
       createdObservation = await createObservation(message.new);
     } catch (err) {
@@ -145,4 +146,44 @@ async function subscribeToObservationsGetRequests(): Promise<any> {
   logger.debug(`Subscribed to ${eventName} requests`);
   return;  
 
+}
+
+
+
+//-------------------------------------------------
+// Update observation
+//-------------------------------------------------
+async function subscribeToObservationUpdateRequest(): Promise<any> {
+  
+  // N.B. The event-stream package changes the configuration of a queue based on whether it contains the work 'request'. Here we leave it out because we want the queue to be durable and lazy to aid the processing of many observations in bulk.
+  const eventName = 'observation.update.request';
+
+  const observationUpdateRequestSchema = joi.object({
+    where: joi.object({
+      id: joi.string().required()
+    }).required(),
+    updates: joi.object({}) // let the service check this
+      .unknown()
+      .min(1)
+      .required()
+  }).required();
+
+  await event.subscribe(eventName, async (message): Promise<void> => {
+
+    logger.debug(`New ${eventName} message.`, message);
+
+    let updatedObservation: ObservationClient;
+    try {
+      const {error: err} = observationUpdateRequestSchema.validate(message);
+      if (err) throw new BadRequest(`Invalid ${eventName} request: ${err.message}`);    
+      updatedObservation = await updateObservation(message.where.id, message.updates);
+    } catch (err) {
+      logCensorAndRethrow(eventName, err);
+    }
+
+    return updatedObservation;
+  });
+
+  logger.debug(`Subscribed to ${eventName} requests`);
+  return;
 }

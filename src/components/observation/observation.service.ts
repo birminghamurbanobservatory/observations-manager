@@ -23,6 +23,8 @@ import {DeleteObservationFail} from './errors/DeleteObservationFail';
 import * as joi from '@hapi/joi';
 import {DeleteObservationsFail} from './errors/DeleteObservationsFail';
 import {UpdateObservationsFail} from './errors/UpdateObservationsFail';
+import * as logger from 'node-logger';
+import {UpdateObservationByIdFail} from './errors/UpdateObservationByIdFail';
 
 const st = knexPostgis(knex);
 
@@ -1169,6 +1171,61 @@ export function buildExtraOnPerClauses(where): string {
 
   return sql;
 }
+
+
+//-------------------------------------------------
+// Update observation
+//-------------------------------------------------
+const updateObservationUpdatesSchema = joi.object({
+  flags: joi.array().allow(null).min(1).items(joi.string())
+})
+.min(1)
+.required();
+
+export async function updateObservationByClientId(id: string, updates: any): Promise<ObservationApp> {
+
+  // Worth having some checks here to be on the safe side.
+  check.assert.nonEmptyString(id);
+  const {timeseriesId, resultTime, locationId} = deconstructObservationId(id);
+  joi.assert(updates, updateObservationUpdatesSchema);
+
+  logger.debug(`Updating an observation with timeseriesId: ${timeseriesId}, resultTime: ${resultTime.toISOString()}, and locationId: ${locationId}`);
+
+  let nRowsUpdated;
+  try {
+
+    nRowsUpdated = await knex('observations')
+    .where((builder) => {
+      builder.where('timeseries', timeseriesId);
+      builder.where('result_time', resultTime);
+      if (locationId) {
+        builder.where('location', locationId);
+      } else {
+        builder.whereNull('location');
+      }
+    })
+    .update(updates);
+
+  } catch (err) {
+    throw new UpdateObservationByIdFail(`Failed to update observation '${id}'.`, err.message);
+  }
+
+  if (nRowsUpdated > 1) {
+    logger.error('More than one observations was updated when trying to update a single observation by its client id. This should not be happening.');
+  }
+
+  if (nRowsUpdated === 0) {
+    throw new ObservationNotFound(`Failed to find an observation with ID '${id}' to update.`);
+  }
+
+  // Because of the joins it's proving easier to perform a simple update and then get the updated observation in a separate request rather than trying to use 'returning' with the joins.
+  const updatedObservation = await getObservationByClientId(id);
+
+  return updatedObservation;
+
+}
+
+
 
 
 //-------------------------------------------------
