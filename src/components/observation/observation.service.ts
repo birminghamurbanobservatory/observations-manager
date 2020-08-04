@@ -25,6 +25,7 @@ import {DeleteObservationsFail} from './errors/DeleteObservationsFail';
 import {UpdateObservationsFail} from './errors/UpdateObservationsFail';
 import * as logger from 'node-logger';
 import {UpdateObservationByIdFail} from './errors/UpdateObservationByIdFail';
+import {UnexpectedObservationValue} from './errors/UnexpectedObservationValue';
 
 const st = knexPostgis(knex);
 
@@ -1491,7 +1492,7 @@ export function buildObservationDb(obsCore: ObservationCore, timeseriesId: numbe
     observationDb.value_json = obsCore.value;
 
   } else {
-    throw new Error(`Unexpected observation value: ${obsCore.value}`);
+    throw new UnexpectedObservationValue(`Unexpected observation value: ${obsCore.value}`);
   }
 
   return observationDb;

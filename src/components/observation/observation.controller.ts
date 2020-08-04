@@ -92,7 +92,15 @@ export async function createObservation(observation: ObservationClient): Promise
     logger.debug('A corresponding timeseries was found for this observation', matchingTimeseries);
 
     // Save the obs
-    createdObsCore = await observationService.saveObservation(obsCore, matchingTimeseries.id);
+    try {
+      createdObsCore = await observationService.saveObservation(obsCore, matchingTimeseries.id);
+    } catch (err) {
+      // Added this extra logging here so I can see which observation it was that failed to save due to a bad value
+      if (err.name === 'UnexpectedObservationValue') {
+        logger.error(`Failed to save observation. Reason: ${err.message}`, {observation});
+      }
+      throw err;
+    }
     logger.debug('Observation has been added to the observations table');
 
     // Update the timeseries
