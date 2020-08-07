@@ -424,8 +424,6 @@ export async function getObservations(where = {}, options = {}): Promise<{data: 
     }
   }
 
-  console.log(whereValidated);
-
   const observations = await observationService.getObservations(whereValidated, optionsValidated);
 
   const observationsForClient = observations.map(observationService.observationAppToClient);
