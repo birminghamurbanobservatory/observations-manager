@@ -1,7 +1,7 @@
 import {ObservationClient} from './observation-client.class';
 import {extractTimeseriesPropsFromObservation, extractCoreFromObservation, observationClientToApp, observationAppToClient} from './observation.service';
 import * as observationService from '../observation/observation.service';
-import {findSingleMatchingTimeseries, convertPropsToExactWhere, updateTimeseries, createTimeseries, decodeTimeseriesId} from '../timeseries/timeseries.service';
+import {findSingleMatchingTimeseries, convertPropsToExactWhere, updateTimeseries, createTimeseries, decodeTimeseriesId, generateHashFromTimeseriesProps, findSingleTimeseriesUsingHash} from '../timeseries/timeseries.service';
 import * as logger from 'node-logger';
 import * as joi from '@hapi/joi';
 import {BadRequest} from '../../errors/BadRequest';
@@ -73,7 +73,7 @@ export async function createObservation(observation: ObservationClient): Promise
   }
 
   const props = extractTimeseriesPropsFromObservation(obs);
-  const exactWhere = convertPropsToExactWhere(props);
+  const hash = generateHashFromTimeseriesProps(props);
   const obsCore = extractCoreFromObservation(obs);
 
   if (matchingLocation) {
@@ -83,7 +83,16 @@ export async function createObservation(observation: ObservationClient): Promise
   // N.B. we get the timeseries first before either inserting or updating it, as we need to check the observation is saved propertly first (e.g. no ObservationAlreadyExists errors occur) before updating the firstObs or lastObs of the timeseries.
 
   // Is there a matching timeseries?
-  const matchingTimeseries = await findSingleMatchingTimeseries(exactWhere);
+  let matchingTimeseries;
+  try {
+    matchingTimeseries = await findSingleTimeseriesUsingHash(hash);
+  } catch (err) {
+    if (err.name === 'TimeseriesNotFound') {
+      // Do nothing, this is to be expected sometimes.
+    } else {
+      throw err;
+    }
+  }
 
   let createdObsCore: ObservationCore;
   let upsertedTimeseries: TimeseriesApp;
@@ -128,11 +137,43 @@ export async function createObservation(observation: ObservationClient): Promise
     const timeseriesToCreate: any = cloneDeep(props);
     timeseriesToCreate.firstObs = obs.resultTime;
     timeseriesToCreate.lastObs = obs.resultTime;
+    timeseriesToCreate.hash = hash;
 
-    upsertedTimeseries = await createTimeseries(timeseriesToCreate);
+    let raceConditionOccurred;
+
+    try {
+      upsertedTimeseries = await createTimeseries(timeseriesToCreate);
+    } catch (err) {
+      if (err.name === 'TimeseriesAlreadyExists') {
+        // If we get here it means there's been a race condition. For example multiple observations may arrive from the same timeseries at virtually the same time, if this is the first time we've seen observations from this timeseries then the first few observations will all trigger the creation of a timeseries. The first observation will be able to create the timeseries, but the rest will fail because of the unique index on the hash and will thus reach this point. We now need to get the newly created timeseries so we can give this observation the correct timeseries id.
+        logger.debug(`Race condition occured when creating observation due to timeseries already existing (hash: ${hash})`);
+        upsertedTimeseries = await findSingleTimeseriesUsingHash(hash);
+        raceConditionOccurred = true;
+
+      } else {
+        throw err;
+      }
+    }
 
     // Now to create the observation
     createdObsCore = await observationService.saveObservation(obsCore, upsertedTimeseries.id);
+
+    if (raceConditionOccurred) {
+      // Now we know that the observation was created ok, let's see if we need to update the timeseries
+      const updates: any = {};
+      if (upsertedTimeseries.firstObs > obs.resultTime) {
+        updates.first_obs = obs.resultTime;
+      }
+      if (upsertedTimeseries.lastObs < obs.resultTime) {
+        updates.last_obs = obs.resultTime;
+      }
+      logger.debug('Updates for timeseries', updates);
+
+      if (Object.keys(updates).length > 0) {
+        logger.debug('Updating existing timeseries');
+        upsertedTimeseries = await updateTimeseries(upsertedTimeseries.id, updates);
+      }
+    }
 
   }
 

@@ -1,4 +1,4 @@
-import {convertPropsToExactWhere, timeseriesAppToDb, encodeTimeseriesId, decodeTimeseriesId} from './timeseries.service';
+import {convertPropsToExactWhere, timeseriesAppToDb, encodeTimeseriesId, decodeTimeseriesId, generateHashFromTimeseriesProps} from './timeseries.service';
 import {TimeseriesApp} from './timeseries-app.class';
 import {TimeseriesDb} from './timeseries-db.class';
 import * as check from 'check-types';
@@ -152,5 +152,180 @@ describe('Testing of timeseries id encoding and decoding function', () => {
       const result = decodeTimeseriesId(clientId);
     }).toThrowError(InvalidTimeseriesId);
   });  
+
+});
+
+
+
+
+
+describe('Testing generateHashFromTimeseriesProps function', () => {
+
+  test('Two identical full sets of timeseries props should produce the same hash', () => {
+    
+    const t1 = {
+      madeBySensor: 's1',
+      hasDeployment: 'd-1',
+      hostedByPath: ['p1', 'p-2'],
+      hasFeatureOfInterest: 'earth',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      disciplines: ['hydrology', 'meteorology'],
+      usedProcedures: ['p1', 'p2'],
+      unit: 'degree-celsius'
+    };
+
+    const t2 = {
+      madeBySensor: 's1',
+      hasDeployment: 'd-1',
+      hostedByPath: ['p1', 'p-2'],
+      hasFeatureOfInterest: 'earth',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      disciplines: ['hydrology', 'meteorology'],
+      usedProcedures: ['p1', 'p2'],
+      unit: 'degree-celsius'
+    };
+
+    const hash1 = generateHashFromTimeseriesProps(t1);
+    const hash2 = generateHashFromTimeseriesProps(t2);
+
+    expect(hash1).toBe(hash2);
+
+  });
+
+
+  test('Two identical partial sets of timeseries props should produce the same hash', () => {
+    
+    const t1 = {
+      madeBySensor: 's1',
+      hasDeployment: 'd-1',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      disciplines: ['hydrology', 'meteorology'],
+      unit: 'degree-celsius'
+    };
+
+    const t2 = {
+      madeBySensor: 's1',
+      hasDeployment: 'd-1',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      disciplines: ['hydrology', 'meteorology'],
+      unit: 'degree-celsius'
+    };
+
+    const hash1 = generateHashFromTimeseriesProps(t1);
+    const hash2 = generateHashFromTimeseriesProps(t2);
+
+    expect(hash1).toBe(hash2);
+
+  });
+
+
+  test('Should throw error when using wrong case for props', () => {
+    
+    const t1: any = {
+      made_by_sensor: 's1',
+      has_deployment: 'd1'
+    };
+
+    expect(() => {
+      generateHashFromTimeseriesProps(t1);
+    }).toThrow();
+
+  });
+
+
+  test('Should account for unsorted disciplines array', () => {
+    
+    const t1: any = {
+      madeBySensor: 's1',
+      hasDeployment: 'd1',
+      disciplines: ['meteorology', 'hydrology']
+    };
+
+    const t2: any = {
+      madeBySensor: 's1',
+      hasDeployment: 'd1',
+      disciplines: ['hydrology', 'meteorology'] // in different order
+    };
+
+    const hash1 = generateHashFromTimeseriesProps(t1);
+    const hash2 = generateHashFromTimeseriesProps(t2);
+
+    expect(hash1).toBe(hash2);
+
+  });
+
+
+  test('Produces a different hash when disciplines are different', () => {
+    
+    const t1 = {
+      madeBySensor: 's1',
+      hasDeployment: 'd-1',
+      hostedByPath: ['p1', 'p-2'],
+      hasFeatureOfInterest: 'earth',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      disciplines: ['hydrology', 'meteorology'],
+      usedProcedures: ['p1', 'p2'],
+      unit: 'degree-celsius'
+    };
+
+    const t2 = {
+      madeBySensor: 's1',
+      hasDeployment: 'd-1',
+      hostedByPath: ['p1', 'p-2'],
+      hasFeatureOfInterest: 'earth',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      // removed discipline
+      usedProcedures: ['p1', 'p2'],
+      unit: 'degree-celsius'
+    };
+
+    const hash1 = generateHashFromTimeseriesProps(t1);
+    const hash2 = generateHashFromTimeseriesProps(t2);
+
+    expect(hash1).not.toBe(hash2);
+
+  });
+
+
+  test('Produces a different hash when units are different', () => {
+    
+    const t1 = {
+      madeBySensor: 's1',
+      hasDeployment: 'd-1',
+      hostedByPath: ['p1', 'p-2'],
+      hasFeatureOfInterest: 'earth',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      disciplines: ['hydrology', 'meteorology'],
+      usedProcedures: ['p1', 'p2'],
+      unit: 'degree-celsius'
+    };
+
+    const t2 = {
+      madeBySensor: 's1',
+      hasDeployment: 'd-1',
+      hostedByPath: ['p1', 'p-2'],
+      hasFeatureOfInterest: 'earth',
+      observedProperty: 'air-temperature',
+      aggregation: 'instant',
+      // removed discipline
+      usedProcedures: ['p1', 'p2'],
+      unit: 'degree'
+    };
+
+    const hash1 = generateHashFromTimeseriesProps(t1);
+    const hash2 = generateHashFromTimeseriesProps(t2);
+
+    expect(hash1).not.toBe(hash2);
+
+  });
+
+
 
 });

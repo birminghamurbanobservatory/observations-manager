@@ -2,6 +2,7 @@ export class TimeseriesApp {
   public id?: number;
   public firstObs?: Date;
   public lastObs?: Date;
+  public hash?: string;
   public madeBySensor?: string;
   public hasDeployment?: string;
   public hostedByPath?: string[];

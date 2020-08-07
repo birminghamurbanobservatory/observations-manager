@@ -2,7 +2,7 @@ import {TimeseriesProps} from './timeseries-props.class';
 import * as check from 'check-types';
 import {TimeseriesApp} from './timeseries-app.class';
 import {TimeseriesDb} from './timeseries-db.class';
-import {sortBy, cloneDeep} from 'lodash';
+import {sortBy, cloneDeep, isEqual} from 'lodash';
 import {TimeseriesNotFound} from './errors/TimeseriesNotFound';
 import {GetTimeseriesFail} from './errors/GetTimeseriesFail';
 import {GetTimeseriesUsingIdsFail} from './errors/GetTimeseriesUsingIdsFail';
@@ -20,6 +20,10 @@ import {arrayToPostgresArrayString} from '../../utils/postgresql-helpers';
 import {InvalidTimeseriesId} from './errors/InvalidTimeseriesId';
 import {DeleteTimeseriesFail} from './errors/DeleteTimeseriesFail';
 import {InvalidObservationId} from '../observation/errors/InvalidObservationId';
+import objectHash from 'object-hash';
+import * as joi from '@hapi/joi';
+import {GetSingleTimeseriesUsingHashFail} from './errors/GetSingleTimeseriesUsingHashFail';
+import {TimeseriesAlreadyExists} from './errors/TimeseriesAlreadyExists';
 
 
 
@@ -29,6 +33,7 @@ export async function createTimeseriesTable(): Promise<void> {
     table.increments('id');
     table.timestamp('first_obs', {useTz: true}).notNullable();
     table.timestamp('last_obs', {useTz: true}).notNullable();
+    table.string('hash').notNullable();
     table.string('made_by_sensor'); // I've made this nullable for the sake of derived observations with no sensor.
     table.string('has_deployment');
     table.specificType('hosted_by_path', 'ltree');
@@ -40,6 +45,8 @@ export async function createTimeseriesTable(): Promise<void> {
     table.specificType('used_procedures', 'TEXT[]');
   });
 
+  // Create a unique index for the hash
+  await knex.raw('CREATE UNIQUE INDEX timeseries_uniq_hash_index ON timeseries(hash)');
   // Add a GIST index for hosted_by_path ltree column
   await knex.raw('CREATE INDEX timeseries_hosted_by_path_index ON timeseries USING GIST (hosted_by_path);');
   // This index should come in handy for queries wanting to display observations on a map.
@@ -61,7 +68,11 @@ export async function createTimeseries(timeseries: TimeseriesApp): Promise<Times
     .returning('*');
     createdTimeseries = result[0];
   } catch (err) {
-    throw new CreateTimeseriesFail(undefined, err.message);
+    if (err.code === '23505') {
+      throw new TimeseriesAlreadyExists(`A timeseries with this set of properties (hash: ${timeseries.hash}) already exists.`);
+    } else {
+      throw new CreateTimeseriesFail(undefined, err.message);
+    }
   }  
 
   return timeseriesDbToApp(createdTimeseries);
@@ -581,6 +592,67 @@ export async function findTimeseriesUsingIds(ids: number[]): Promise<TimeseriesA
   return timeseries.map(timeseriesDbToApp);  
 
 }
+
+
+export async function findSingleTimeseriesUsingHash(hash: string): Promise<TimeseriesApp> {
+
+  check.assert.nonEmptyString(hash);
+
+  let timeseriesDb: TimeseriesDb;
+  try {
+    timeseriesDb = await knex('timeseries')
+    .select()
+    .where({hash})
+    .first();
+  } catch (err) {
+    throw new GetSingleTimeseriesUsingHashFail(undefined, err.message);
+  }
+
+  if (!timeseriesDb) {
+    throw new TimeseriesNotFound(`A timeseries with hash '${hash}' could not be found`);
+  }
+
+  return timeseriesDbToApp(timeseriesDb);
+
+}
+
+
+
+const generateHashTimeseriesSchema = joi.object({
+  madeBySensor: joi.string(),
+  hasDeployment: joi.string(),
+  hostedByPath: joi.array().min(1).items(joi.string()),
+  hasFeatureOfInterest: joi.string(),
+  observedProperty: joi.string(),
+  aggregation: joi.string(),
+  disciplines: joi.array().min(1).items(joi.string()),
+  usedProcedures: joi.array().min(1).items(joi.string()),
+  unit: joi.string()
+})
+.min(1)
+.required();
+
+// Decided to build the hash from properties in app form, i.e. camel case, rather than the database's snake case
+export function generateHashFromTimeseriesProps(timeseriesProps: TimeseriesProps): string {
+
+  const {error: err, value: validProps} = generateHashTimeseriesSchema.validate(timeseriesProps);
+  if (err) {
+    throw Error(`Invalid timeseries props. ${err.message}`);
+  }
+
+  // Make sure that any array fields, where the order has no meaning, are sorted.
+  const orderNotImportantProps = ['disciplines'];
+  orderNotImportantProps.forEach((prop) => {
+    if (check.assigned(validProps[prop])) {
+      validProps[prop] = sortBy(validProps[prop]);
+    }
+  });
+
+  const hash = objectHash(validProps);
+  return hash;
+
+}
+
 
 
 export function timeseriesAppToDb(timeseriesApp: TimeseriesApp): TimeseriesDb {

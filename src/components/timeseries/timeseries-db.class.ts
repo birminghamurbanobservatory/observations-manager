@@ -2,6 +2,7 @@ export class TimeseriesDb {
   public id?: number;
   public first_obs?: any;
   public last_obs?: any;
+  public hash?: string;
   public made_by_sensor?: string;
   public has_deployment?: string;
   public hosted_by_path?: string;

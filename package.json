@@ -33,6 +33,7 @@
     "knex": "^0.20.4",
     "knex-postgis": "^0.12.0",
     "node-logger": "github:birminghamurbanobservatory/node-logger#semver:^1.0.0",
+    "object-hash": "^2.0.3",
     "pg": "^7.15.0",
     "shortid": "^2.2.15",
     "snakecase-keys": "^3.1.1",
