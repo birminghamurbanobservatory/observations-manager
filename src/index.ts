@@ -16,7 +16,7 @@ import {initialiseDb} from './db/initialise-timescaledb';
 // Logging
 //-------------------------------------------------
 logger.configure(Object.assign({}, config.logger, {getCorrelationId}));
-logger.warn(`${appName} restarted`);
+logger.info(`${appName} instance starting`);
 
 
 (async(): Promise<void> => {
