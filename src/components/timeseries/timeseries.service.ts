@@ -694,6 +694,7 @@ export function timeseriesAppToClient(timeseriesApp: TimeseriesApp): TimeseriesC
   timeseriesClient.id = encodeTimeseriesId(timeseriesClient.id);
   timeseriesClient.firstObs = timeseriesClient.firstObs.toISOString();
   timeseriesClient.lastObs = timeseriesClient.lastObs.toISOString();
+  delete timeseriesClient.hash; // keep this within just this microservice.
   return timeseriesClient;
 }
 
