@@ -3,7 +3,7 @@ import * as logger from 'node-logger';
 import {withCorrelationId, getCorrelationId} from '../utils/correlator';
 import {invokeAllSubscriptions} from './subscriptions';
 
-export async function initialiseEvents(settings: {url: string; appName: string; logLevel: string}): Promise<void> {
+export async function initialiseEvents(settings: {url: string; appName: string; logLevel: string; maxMessagesAtOnce: number}): Promise<void> {
 
   logger.debug('Initalising events stream');
 
@@ -32,6 +32,7 @@ export async function initialiseEvents(settings: {url: string; appName: string; 
     await event.init({
       url: settings.url,
       appName: settings.appName,
+      maxMessagesAtOnce: settings.maxMessagesAtOnce,
       withCorrelationId,
       getCorrelationId
     });

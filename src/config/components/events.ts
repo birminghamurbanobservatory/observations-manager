@@ -13,7 +13,9 @@ const schema = joi.object({
     .required(),
   EVENTS_LOG_LEVEL: joi.string()
   .valid('error', 'warn', 'info', 'debug')
-  .default('info')      
+  .default('info'),
+  EVENTS_MAX_MESSAGES_AT_ONCE: joi.number()
+  .default(20)        
 }).unknown() // allows for extra fields (i.e that we don't check for) in the object being checked.
   .required();
 
@@ -36,5 +38,6 @@ if (err) {
 // Pull out the properties we need to create this particular config object. 
 export const events = {
   url: envVars.EVENTS_URL,
-  logLevel: envVars.EVENTS_LOG_LEVEL
+  logLevel: envVars.EVENTS_LOG_LEVEL,
+  maxMessagesAtOnce: envVars.EVENTS_MAX_MESSAGES_AT_ONCE
 };
