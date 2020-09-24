@@ -13,6 +13,7 @@ import {locationClientToApp, getLocationByClientId, createLocation, locationAppT
 import {GeometryMismatch} from './errors/GeometryMismatch';
 import * as check from 'check-types';
 import {validateObservation} from './observation-validator';
+import {areGeometriesTheSame} from '../../utils/compare-geojson';
 
 
 const maxObsPerRequest = config.obs.maxPerRequest;
@@ -45,7 +46,8 @@ export async function createObservation(observation: ObservationClient): Promise
       }
       if (matchingLocation) {
         // Although the IDs may match, we need to check that the geometry object is also the same
-        if (!isEqual(matchingLocation.geometry, locationFromObs.geometry)) {
+        if (!areGeometriesTheSame(matchingLocation.geometry, locationFromObs.geometry)) {
+          // I had a 
           logger.warn('Geometry mismatch', {matchingLocation: matchingLocation.geometry, locationFromObs: locationFromObs.geometry});
           throw new GeometryMismatch();
         }

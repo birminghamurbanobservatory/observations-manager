@@ -14,6 +14,7 @@ export function logCensorAndRethrow(eventName, err): any {
       logger.error(`Database error whilst handling ${eventName} event.`, err);
     } else {
       // For example if a user requests a resource with the wrong ID I only want a 'warn' error not a full 'error' level error. 
+      // TODO: Might want to fine tune this a bit, as I'm missing some important errors sometimes, e.g. GeometryMismatch
       logger.warn(`Operational error whilst handling ${eventName} event.`, err);
     }
     throw err;
