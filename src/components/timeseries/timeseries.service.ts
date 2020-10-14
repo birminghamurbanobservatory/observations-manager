@@ -33,7 +33,6 @@ export async function createTimeseriesTable(): Promise<void> {
     table.increments('id');
     table.timestamp('first_obs', {useTz: true}).notNullable();
     table.timestamp('last_obs', {useTz: true}).notNullable();
-    table.string('hash').notNullable();
     table.string('made_by_sensor'); // I've made this nullable for the sake of derived observations with no sensor.
     table.string('has_deployment');
     table.specificType('hosted_by_path', 'ltree');
@@ -43,6 +42,7 @@ export async function createTimeseriesTable(): Promise<void> {
     table.string('has_feature_of_interest');
     table.specificType('disciplines', 'TEXT[]');
     table.specificType('used_procedures', 'TEXT[]');
+    table.string('hash').notNullable();
   });
 
   // Create a unique index for the hash
