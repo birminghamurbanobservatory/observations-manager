@@ -67,7 +67,7 @@ export async function createObservationsTable(): Promise<void> {
   // N.B. we need the COALESCE for instances when no location is provided, i.e. the column stores a NULL value. Without it two identical locationless observations wouldn't trigger a duplicate error, because NULL counts as distinct each time.
 
   // Add an index to help with geospatial queries, i.e. queries that are better scanning the locations table first and then looking for matching locations in the observations table. This index shouldn't use a coalesce for location.
-  await knex.raw('CREATE INDEX location_result_time ON observations (location ASC, result_time DESC)');
+  await knex.raw('CREATE INDEX location_timeseries_result_time ON observations (location ASC, timeseries ASC, result_time DESC)');
 
   return;
 }
