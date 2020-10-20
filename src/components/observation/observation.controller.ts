@@ -149,7 +149,7 @@ export async function createObservation(observation: ObservationClient): Promise
     } catch (err) {
       if (err.name === 'TimeseriesAlreadyExists') {
         // If we get here it means there's been a race condition. For example multiple observations may arrive from the same timeseries at virtually the same time, if this is the first time we've seen observations from this timeseries then the first few observations will all trigger the creation of a timeseries. The first observation will be able to create the timeseries, but the rest will fail because of the unique index on the hash and will thus reach this point. We now need to get the newly created timeseries so we can give this observation the correct timeseries id.
-        logger.debug(`Race condition occured when creating observation due to timeseries already existing (hash: ${hash})`);
+        logger.warn(`Race condition occured when creating observation due to timeseries already existing (hash: ${hash})`);
         upsertedTimeseries = await findSingleTimeseriesUsingHash(hash);
         raceConditionOccurred = true;
 
