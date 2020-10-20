@@ -68,8 +68,10 @@ export async function createTimeseries(timeseries: TimeseriesApp): Promise<Times
     .returning('*');
     createdTimeseries = result[0];
   } catch (err) {
-    logger.error('Error whilst creating timeseries', {timeseries, err}); // remove this after testing
     if (err.code === '23505') {
+      // N.B. that this code can also be reached if there's a collision with the table's primary key, i.e. the 'id' column, this can occured if the auto-incrementing is messed up because the auto-assigned nextval() assigned a new id lower than that of max id in the table. This happened to me when migrating from Timescale Cloud to Forge. 
+      // Stack overflow has some info on how to resolve this.
+      // https://stackoverflow.com/questions/244243/how-to-reset-postgres-primary-key-sequence-when-it-falls-out-of-sync
       throw new TimeseriesAlreadyExists(`A timeseries with this set of properties (hash: ${timeseries.hash}) already exists.`);
     } else {
       throw new CreateTimeseriesFail(undefined, err.message);
