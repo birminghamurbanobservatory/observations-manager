@@ -68,6 +68,7 @@ export async function createTimeseries(timeseries: TimeseriesApp): Promise<Times
     .returning('*');
     createdTimeseries = result[0];
   } catch (err) {
+    logger.error('Error whilst creating timeseries', err); // remove this after testing
     if (err.code === '23505') {
       throw new TimeseriesAlreadyExists(`A timeseries with this set of properties (hash: ${timeseries.hash}) already exists.`);
     } else {
